@@ -1,0 +1,150 @@
+Loading Jacobi algorithm test data symm.t/xt file...
+Parsing Jacobi data...
+Normal benchmark:
+  59,795,365,072 bytes allocated in the heap
+      54,646,880 bytes copied during GC
+       3,431,672 bytes maximum residency (978 sample(s))
+         148,760 bytes maximum slop
+               8 MB total memory in use (0 MB lost due to fragmentation)
+
+                                    Tot time (elapsed)  Avg pause  Max pause
+  Gen  0     107235 colls,     0 par    1.97s    1.95s     0.0000s    0.0007s
+  Gen  1       978 colls,     0 par    0.21s    0.21s     0.0002s    0.0005s
+
+  Parallel GC work balance: -nan (0 / 0, ideal 1)
+
+                        MUT time (elapsed)       GC time  (elapsed)
+  Task  0 (worker) :   35.15s    ( 47.95s)       0.99s    (  1.00s)
+  Task  1 (worker) :    0.00s    ( 48.95s)       0.00s    (  0.00s)
+  Task  2 (bound)  :   11.78s    ( 47.79s)       1.16s    (  1.16s)
+
+  SPARKS: 0 (0 converted, 0 overflowed, 0 dud, 0 GC'd, 0 fizzled)
+
+  INIT    time    0.00s  (  0.00s elapsed)
+  MUT     time   46.90s  ( 46.79s elapsed)
+  GC      time    2.18s  (  2.15s elapsed)
+  EXIT    time    0.00s  (  0.00s elapsed)
+  Total   time   49.08s  ( 48.95s elapsed)
+
+  Alloc rate    1,274,899,558 bytes per MUT second
+
+  Productivity  95.6% of total user, 95.8% of total elapsed
+
+gc_alloc_block_sync: 0
+whitehole_spin: 0
+gen[0].sync: 0
+gen[1].sync: 0
+Loading Jacobi algorithm test data symm.txt file...
+Parsing Jacobi data...
+Normal benchmark:
+  59,801,427,392 bytes allocated in the heap
+      45,173,120 bytes copied during GC
+       4,460,184 bytes maximum residency (750 sample(s))
+         160,776 bytes maximum slop
+              11 MB total memory in use (1 MB lost due to fragmentation)
+
+                                    Tot time (elapsed)  Avg pause  Max pause
+  Gen  0     67107 colls,     0 par    1.71s    1.69s     0.0000s    0.0007s
+  Gen  1       750 colls,   749 par    0.37s    0.15s     0.0002s    0.0008s
+
+  Parallel GC work balance: 1.25 (668551 / 533441, ideal 2)
+
+                        MUT time (elapsed)       GC time  (elapsed)
+  Task  0 (worker) :   18.02s    ( 36.26s)       0.32s    (  0.34s)
+  Task  1 (worker) :   19.73s    ( 35.84s)       0.74s    (  0.76s)
+  Task  2 (bound)  :   11.53s    ( 35.67s)       0.93s    (  0.93s)
+  Task  3 (worker) :    0.00s    ( 36.60s)       0.00s    (  0.00s)
+
+  SPARKS: 0 (0 converted, 0 overflowed, 0 dud, 0 GC'd, 0 fizzled)
+
+  INIT    time    0.00s  (  0.00s elapsed)
+  MUT     time   49.19s  ( 34.76s elapsed)
+  GC      time    2.08s  (  1.84s elapsed)
+  EXIT    time    0.00s  (  0.00s elapsed)
+  Total   time   51.27s  ( 36.60s elapsed)
+
+  Alloc rate    1,215,685,238 bytes per MUT second
+
+  Productivity  95.9% of total user, 134.4% of total elapsed
+
+gc_alloc_block_sync: 0
+whitehole_spin: 0
+gen[0].sync: 0
+gen[1].sync: 0
+Loading Jacobi algorithm test data symm.txt file...
+Parsing Jacobi data...
+Normal benchmark:
+  59,811,105,696 bytes allocated in the heap
+      33,105,408 bytes copied during GC
+       5,492,760 bytes maximum residency (606 sample(s))
+         168,712 bytes maximum slop
+              14 MB total memory in use (1 MB lost due to fragmentation)
+
+                                    Tot time (elapsed)  Avg pause  Max pause
+  Gen  0     46907 colls,     0 par    1.78s    1.75s     0.0000s    0.0007s
+  Gen  1       606 colls,   605 par    0.43s    0.12s     0.0002s    0.0008s
+
+  Parallel GC work balance: 1.39 (565222 / 407914, ideal 3)
+
+                        MUT time (elapsed)       GC time  (elapsed)
+  Task  0 (worker) :   17.35s    ( 36.68s)       0.15s    (  0.17s)
+  Task  1 (worker) :   15.41s    ( 36.22s)       0.61s    (  0.63s)
+  Task  2 (bound)  :   12.12s    ( 35.70s)       1.15s    (  1.15s)
+  Task  3 (worker) :    0.00s    ( 36.85s)       0.00s    (  0.00s)
+  Task  4 (worker) :   19.01s    ( 36.63s)       0.20s    (  0.22s)
+
+  SPARKS: 0 (0 converted, 0 overflowed, 0 dud, 0 GC'd, 0 fizzled)
+
+  INIT    time    0.00s  (  0.00s elapsed)
+  MUT     time   63.81s  ( 34.97s elapsed)
+  GC      time    2.21s  (  1.88s elapsed)
+  EXIT    time    0.00s  (  0.00s elapsed)
+  Total   time   66.02s  ( 36.85s elapsed)
+
+  Alloc rate    937,264,560 bytes per MUT second
+
+  Productivity  96.7% of total user, 173.2% of total elapsed
+
+gc_alloc_block_sync: 0
+whitehole_spin: 0
+gen[0].sync: 28
+gen[1].sync: 10368
+Loading Jacobi algorithm test data symm.txt file...
+Parsing Jacobi data...
+Normal benchmark:
+  59,814,961,152 bytes allocated in the heap
+      27,781,560 bytes copied during GC
+       6,466,080 bytes maximum residency (514 sample(s))
+         197,296 bytes maximum slop
+              16 MB total memory in use (1 MB lost due to fragmentation)
+
+                                    Tot time (elapsed)  Avg pause  Max pause
+  Gen  0     39333 colls,     0 par    1.88s    1.84s     0.0000s    0.0008s
+  Gen  1       514 colls,   513 par    0.62s    0.20s     0.0004s    0.0600s
+
+  Parallel GC work balance: 1.58 (508448 / 321903, ideal 4)
+
+                        MUT time (elapsed)       GC time  (elapsed)
+  Task  0 (worker) :   12.63s    ( 36.26s)       0.26s    (  0.37s)
+  Task  1 (worker) :   13.37s    ( 36.01s)       0.53s    (  0.61s)
+  Task  2 (bound)  :   12.27s    ( 35.43s)       1.19s    (  1.19s)
+  Task  3 (worker) :    0.00s    ( 36.62s)       0.00s    (  0.00s)
+  Task  4 (worker) :   13.60s    ( 36.32s)       0.24s    (  0.31s)
+  Task  5 (worker) :   15.53s    ( 36.23s)       0.31s    (  0.39s)
+
+  SPARKS: 0 (0 converted, 0 overflowed, 0 dud, 0 GC'd, 0 fizzled)
+
+  INIT    time    0.00s  (  0.00s elapsed)
+  MUT     time   67.43s  ( 34.58s elapsed)
+  GC      time    2.50s  (  2.04s elapsed)
+  EXIT    time    0.00s  (  0.00s elapsed)
+  Total   time   69.93s  ( 36.62s elapsed)
+
+  Alloc rate    887,082,161 bytes per MUT second
+
+  Productivity  96.4% of total user, 184.1% of total elapsed
+
+gc_alloc_block_sync: 10
+whitehole_spin: 0
+gen[0].sync: 303
+gen[1].sync: 8676

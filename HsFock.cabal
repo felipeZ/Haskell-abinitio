@@ -1,0 +1,121 @@
+name:         HartreeFock
+version:      0.1.0.0
+synopsis:     Hartree-Fock SCF method for ab-initio computational chemistry. 
+description:  Hartree-Fock Self Consistent Field method is the foundation of modern ab-inito computational chemistry. 
+              This package aims to overcome many years of painful Fortran programming while bringing as much 
+              performance as classical packages and also new computing paradigms upon modern Haskell features. 
+category:     computational chemistry
+author:       felipe.zapata@edu.uah.es, a.alvarez@uah.es
+maintainer:   a.alvarez@uah.es, felipe.zapata@edu.uah.es 
+homepage:     http://www2.uah.es/resmol
+license:      BSD3
+license-file: LICENSE
+build-type:   Simple
+cabal-version: >= 1.8
+
+data-files: data.dat
+
+Flag Debug
+    Description: Enable debug support
+    Default:False
+Flag abinitio
+    Description: Enable abinitio compilation
+    Default:False
+
+Library
+  ghc == 7.*
+  ghc-options:
+    -Odph
+    -rtsopts
+    -fno-liberate-case
+    -funfolding-use-threshold1000
+    -funfolding-keeness-factor1000
+    -fllvm
+    -optlo-O3
+  build-depends:
+    base >= 4.5 && < 4.6,
+    mtl, filepath, directory, containers, parallel, Cabal,
+    erf,
+    vector,
+    hmatrix,
+    repa
+  hs-source-dirs: HartreeFock
+  other-modules: GlobalTypes, LinearAlgebra, JacobiMethod, IntegralsEvaluation 
+  exposed-modules: HartreeFock
+
+
+executable hsfock
+  ghc == 7.*
+  ghc-options:
+    -rtsopts
+    -threaded
+  build-depends:
+    base >= 4.5 && < 4.6,
+    mtl, filepath, directory, containers, parallel, Cabal,
+    erf,
+    vector,
+    hmatrix,
+    repa,
+    HartreeFock
+  main-is: Main.hs
+  hs-source-dirs: hsfock
+  other-modules: OptsCheck, Paths_HartreeFock 
+
+executable abinitio
+
+  if flag(abinitio)
+    Buildable: True
+  else
+    Buildable: False
+
+  ghc == 7.*
+  build-depends:
+    base >= 4.5 && < 4.6,
+    mtl, filepath, directory, containers, parallel, Cabal,
+    erf,
+    hmatrix,
+    vector,
+    repa,
+    HartreeFock
+  main-is: Main_articulo.hs
+  hs-source-dirs: abinitio
+
+Test-Suite test-jacobi-dummy
+  type:       exitcode-stdio-1.0
+  build-depends:
+    base >= 4.5 && < 4.6,
+    mtl, filepath, directory, containers, parallel, Cabal,
+    erf,
+    hmatrix,
+    vector,
+    repa
+  hs-source-dirs: test
+  main-is:    test-Jacobi.hs
+
+Benchmark jacobi-bench
+  type:       exitcode-stdio-1.0
+  ghc == 7.*
+  ghc-options:
+    -Odph
+    -fno-liberate-case
+    -funfolding-use-threshold1000
+    -funfolding-keeness-factor1000
+    -fllvm
+    -optlo-O3
+    -rtsopts
+    -threaded
+  build-depends:
+    base >= 4.5 && < 4.6,
+    mtl, filepath, directory, containers, parallel, Cabal, time,
+    erf,
+    hmatrix,
+    vector,
+    repa,
+    bytestring, bytestring-lexing,
+    criterion
+  hs-source-dirs: bench
+  main-is:    bench-Jacobi.hs
+  other-modules: Prueba
+
+
+
