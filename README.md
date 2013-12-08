@@ -9,3 +9,5 @@ The cabal package contains the Main HartreeFock library along with a executable 
 as the principal frontend.
 
 This tool is developed in the RESMOL research group http://www2.uah.es/resmol
+
+supported by Luis Manuel
