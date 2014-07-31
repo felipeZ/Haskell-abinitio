@@ -42,7 +42,6 @@ import Text.Printf
 -- internal Modules
 import BasisOrthogonalization
 import Boys(boysF)
-import ConcurrencyTools
 import DIIS
 import GlobalTypes
 import IntegralsEvaluation
@@ -73,7 +72,6 @@ scfHF atoms charge logger = do
         s         <- mtxOverlap $ atoms
         xmatrix   <- symmOrtho <=< triang2DIM2 $ s
         density   <- harrisFunctional core xmatrix integrals occupied
-        logger $ show v1
         scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 100 OFF logger
 
         

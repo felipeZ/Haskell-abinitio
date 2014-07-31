@@ -48,8 +48,8 @@ Library
     repa,
     repa-algorithms,
     vector    
-  hs-source-dirs: HartreeFock, Basis
-  other-modules: BasisOrthogonalization, Boys,ConcurrencyTools, DIIS, EigenHmatrix, ExplicitBasis, GaussElimination, GlobalTypes, IntegralsEvaluation, Jacobi
+  hs-source-dirs: HartreeFock
+  other-modules: BasisOrthogonalization, Boys, DIIS, GaussElimination, GlobalTypes, IntegralsEvaluation, Jacobi
   exposed-modules: Derivatives, HartreeFock, LinearAlgebra, Logger
 
 
