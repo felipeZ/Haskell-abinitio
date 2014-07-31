@@ -1,42 +1,54 @@
-{-# Language FlexibleContexts,ScopedTypeVariables,TypeOperators,PatternGuards #-}
+{-# Language BangPatterns #-}
+
+-- The HaskellFock SCF Project
+-- @2013 Felipe Zapata, Angel Alvarez
+-- Analytical evaluation of the overlap, core, nuclei-electron
+-- and electron-electron integrals
+
 
 module IntegralsEvaluation 
   (
-  evalIntbykey
+   (|>)
+  ,(<|)
+  ,(|>>)
+  ,(<<|)
+  ,(<<||>>)
+  ,Operator(..)
+  ,contracted4Centers
+  ,evalIntbykeyStrat   
   ,hcore
   ,mtxOverlap
   ,normaCoeff
   )
   where
 
-import Data.List as DL
-import Control.Parallel.Strategies
-import Data.Number.Erf
+import Control.Applicative
+import Control.Arrow ((&&&),first,second)
+import Control.DeepSeq
+import Control.Exception (assert)
+import Control.Monad (liftM,mplus,sequence)
 import Control.Monad.List
 import Control.Monad.State
-import qualified LinearAlgebra as LA
-import qualified Data.Foldable as DF
-import qualified Data.Traversable as DT
-import qualified Data.Map as M
-import qualified Control.Arrow as Arrow
-import qualified Data.Vector.Unboxed as VU
+import Control.Parallel.Strategies (parMap,rdeepseq)
 import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
-import GlobalTypes
-import Control.Monad (liftM,mplus,sequence)
+import Data.List as DL
+import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
-import Control.Applicative (Applicative (..),ZipList(..),(<*>),(<$>),getZipList)
 import Data.Monoid (Monoid(..),mappend,mconcat,mempty)
-import Numeric.GSL.Integration (integrateQNG)
-import Control.Arrow ((&&&))
+import qualified Data.Vector.Unboxed as VU
+
+-- internal modules 
+import Boys (boysF)
+import GlobalTypes 
+import qualified LinearAlgebra as LA
 
 --  ======================= > MODULE FOR EVALUATING THE ONE AND TWO ELECTRON TYPE INTEGRALS < =============================
+{- | This module is based on chapter 9 "Molecular Integral Evaluation" in the book
+   "Molecular Electronic-Structure Theory". Authors: Trygve Helgaker, Poul Jorgensen and Jeppe Olsen
 
--- This module is based on chapter 9 "Molecular Integral Evaluation" in the book 
--- "Molecular Electronic-Structure Theory". Authors: Trygve Helgaker, Poul Jorgensen and Jeppe Olsen
-
---Remember that the Gaussian primitives are not normalized they must be multiplied for a factor sqr (4*alfa/pi)         
---where alfa is the coefficient of the gaussian function
+   | Remember that the Gaussian primitives are not normalized they must be multiplied for a factor sqr (4*alfa/pi)
+   | where alfa is the coefficient of the gaussian function-}
 
 -- parMap strat f xs = DL.map f xs `using` parList strat
 
@@ -47,30 +59,29 @@ import Control.Arrow ((&&&))
 -- =================================================================================================
 
 -- =================================================================================================
--- == The idea for the integral is using to use the monad list for calculating
--- == the cartesian product between basis, CGF and primitive gaussian functions.
--- == Therefore the integration is of 3 levels.
+-- | The idea for the integral is using to use the monad list for calculating
+-- | the cartesian product between basis, CGF and primitive gaussian functions.
+-- |  Therefore the integration is of 3 levels.
 -- =================================================================================================
 
 
 -- ==============> TYPES <=============
 
-type Exponent = Double 
+type CartesianDerivatives = (Derivatives Int,Derivatives Int,Derivatives Int)
 
-type Pairs = (Double,Double)
+type Exponent = Double 
 
 type MapHermite = M.Map HermiteIndex Double
 
-  
--- ============> ALGEBRAIC DATA TYPES <=================
+type Pairs = (Double,Double)
 
-data Gauss = Gauss {
-             nucCoord :: !NucCoord
-            ,funtype  :: !Funtype
-            ,gaussP   :: !GaussPrimitive
-             } deriving Show
-  
-data Operator =  Rij | Tij | Vij NucCoord
+type Triplet = (Int,Int,Int)
+
+-- ============> ALGEBRAIC DATA TYPES <=================
+    
+data Operator    =  Rij          -- ^ Internuclear interaction
+                  | Tij          -- ^ Electronic kinetic operator
+                  | Vij NucCoord CartesianDerivatives -- ^ Nucleus-electron operator
                  deriving Show
   
                 
@@ -91,52 +102,13 @@ data HermiteStateCoeff = HermiteStateCoeff  {
               ,getkeyC :: ![[HermiteIndex]]
                } deriving Show
 
-
 data HermiteStateIntegral = HermiteStateIntegral {
                getmapI :: !MapHermite
               ,getkeyI :: ![HermiteIndex]
                } deriving Show
-                    
-
-data Tree a = EmptyTree | Node a (Tree a) (Tree a) deriving (Show)
-
--- ================> NEWTYPES <========================
-
-newtype Recursive a = Recursive {runRecursive :: a -> a}
-
- -- =================> INSTANCES <===================
- 
-instance Functor Tree where
-  fmap f EmptyTree = EmptyTree
-  fmap f (Node x l r) = Node (f x) (fmap f l) (fmap f r) 
-
-instance DF.Foldable Tree where
-   foldMap f EmptyTree = mempty  
-   foldMap f (Node x l r) = f x            `mappend`
-                            DF.foldMap f l `mappend`                            
-                            DF.foldMap f r
-
-instance DT.Traversable Tree where
-   traverse f EmptyTree = pure EmptyTree
-   traverse f (Node  k l r) = Node <$> f k <*> DT.traverse f l <*> DT.traverse f r
-
-   
-instance Num a => Monoid (Recursive a) where
-  mempty = Recursive id
-  
-  r1 `mappend` r2 = let [f,g] = runRecursive <$> [r1,r2]
-                    in Recursive $ f . g 
-  
-  mconcat xs =  Recursive $ DF.foldr1 (.) $ fmap runRecursive xs
-   
+               
+               
 -- ==============> Some Utilities <===================
-{-
-unfoldr      :: (b -> Maybe (a, b)) -> b -> [a]
-unfoldr f b  =
-  case f b of
-   Just (a,new_b) -> a : unfoldr f new_b
-   Nothing        -> []-}
-
 
 unfoldWhile :: (b -> Bool) -> (b -> (a, b)) -> b -> [a]   
 unfoldWhile p f = DL.unfoldr (\x -> guard (not (p x)) >> return (f x))     
@@ -145,513 +117,217 @@ safeHead :: [a] -> Maybe a
 safeHead (x:xs) = Just x
 safeHead []     = Nothing
             
-            
+getExponentDerivatives :: CartesianDerivatives -> Int
+getExponentDerivatives (Dij_Ax x,Dij_Ay y, Dij_Az z) = x + y + z
+
+
 -- ===============> OPERATORS <===========
  
-(<<|>>) :: (NucCoord,CGF) -> (NucCoord,CGF) -> Double
-cgf1 <<|>> cgf2 = sijContracted cgf1 cgf2
-
+ -- | Overlap integral over primitive guassians
 (<||>) :: Gauss -> Gauss -> Double
 gauss1 <||> gauss2 = sab gauss1 gauss2
 
--- (<||>) :: (NucCoord,GaussPrimitive) -> (NucCoord,GaussPrimitive) -> (NucCoord,GaussPrimitive) -> (NucCoord,GaussPrimitive) -> Double
--- (g1,g2) <||> (g3,g4) = undefined
-
+-- | Primitive bra in the Dirac notation
 (<|) :: Gauss-> Operator -> (Gauss,Operator)
 gauss1 <| op = (gauss1, op)
 
+-- | Primitive ket in the dirac notation
 (|>) :: (Gauss,Operator) -> Gauss -> Double
 (gauss1,op) |> gauss2 = case op of
-                             Rij -> 1.0
                              Tij -> tab gauss1 gauss2
 
-                             
-(<<|) :: (NucCoord,Basis) -> Operator ->  ((NucCoord,Basis),Operator)
+-- | Overlap between a set of contracted Gauss functions                            
+(<<||>>) :: (NucCoord,CGF) -> (NucCoord,CGF) -> Double
+(r1,cgf1) <<||>> (r2,cgf2) = sijContracted r1 r2 cgf1 cgf2
+
+-- | bra for contracted Gaussian functions                             
+(<<|) :: (NucCoord,CGF) -> Operator ->  ((NucCoord,CGF),Operator)
 b1 <<| op  = (b1,op)
 
-(|>>) ::  ((NucCoord,Basis),Operator) -> (NucCoord,Basis) -> Double
+-- | ket for contracted Gaussian functions
+(|>>) :: ((NucCoord,CGF),Operator) -> (NucCoord,CGF) -> Double
 (b1,op) |>> b2 = case op of
-                Rij -> 1.0
-                Tij -> tijTotal b1 b2
-                Vij rc -> vijTotal b1 rc b2
-
-(|+>) :: Gauss -> Int -> Gauss
-a |+> i = up a i
-
-(|->) :: Gauss -> Int -> Gauss
-a |-> i = down a i
-
---  ========> CONSTANTS <===============
-
-overlapZero =  [[Px,Py],[Px,Pz],[Py,Pz],[Dxx,Dyy],[Dxx,Dzz],[Dyy,Dzz]]
-
+                Tij -> tijContracted b1 b2
+                Vij rc derivatives -> vijContracted b1 rc b2 derivatives
+                
             
--- ==============> Auxiliar Functions <===============
 
-
---(2k -1) !! = (2k)!/(2^k * k!)
--- i = 2k - 1 => k = (i + 1)/ 2
-facOdd ::Int -> Double
-facOdd i | i `rem`2 == 0  = error "Factorial Odd function required an odd integer as input"
-         | otherwise  = case compare i 2 of
-                             LT -> 1
-                             GT-> let k = (1 + i) `div ` 2
-                                  in (fromIntegral $ fac (2*k)) /  (2.0^k * (fromIntegral $ fac k))
-                                                                                        
-fac :: Int -> Int
-fac i = case compare i 2 of
-             LT -> 1
-             EQ -> 2
-             GT-> DL.foldl1' (*) [i,i-1..1]
-                  
-                                    
-binomial :: Int -> Int -> Double
-binomial l k = fromIntegral $ fac l `div` (fac k * fac (l-k))
-
-f2k :: Double -> Double -> Int -> Int -> [Double]
-f2k pa pb l1 l2  = [pa' i * pb' j * binomial l1 i * binomial l2 j | i <- [0..l1], j <- [0..l2], (i+j) `rem` 2 == 0]
-  where pa' i = pa^(l1-i)
-        pb' j = pb^(l2-j)
-
-       
-rab2 :: NucCoord -> NucCoord -> Double
-rab2 a b = sum . DL.map (^2). DL.zipWith (-) a $ b
-
-meanp ::(Exponent,Exponent) -> NucCoord -> NucCoord -> [Double]
-meanp (e1,e2) ra rb = DL.map (\(a,b) -> (e1*a + e2*b)/(e1+e2)) $ zip ra rb
-
-restVect :: (NucCoord,NucCoord) -> NucCoord
-restVect (ra,rb) = DL.zipWith (-) ra rb
-
-normaCoeff :: CGF -> CGF
-normaCoeff b1 = b1 { getPrimitives = newPrimitives}         
-  where list = getPrimitives b1
-        newPrimitives = zip newCoeff . snd . unzip $ list 
-        newCoeff = DL.map norma list
-        norma (c1,e1) = c1 * (2.0*e1/pi)**0.75
-  
--- ======================> INTEGRAL EVALUATION OF ARBITRARY ANGULAR MOMENTUM FUNCTIONS <==========
-
--- Contribution of the Angular part to the integral                               
-                               
-                                                                                                                       
-funtyp2Index :: Funtype -> Int -> Int
-funtyp2Index funtyp x =  fromMaybe (error "Label of the Basis function not identify " ) 
-                         $ M.lookup (funtyp,x) mapLAngular
-
-
-ix :: Int -> Int -> Double -> Double -> Double -> Double
-ix l1 l2 pax pbx gamma = case l1 + l2 <= 1 of
-                              True -> 1.0 
-                              False -> sum [fun1 k * coeff !! k | k <- [0..dim]]
-                            
-  where dim = (l1+l2) `div ` 2
-        coeff = f2k pax pbx l1 l2
-        fun1 i = facOdd (2*i -1) / (2.0*gamma)^i
-
-
-angTerm :: Funtype ->  Funtype -> [Double] -> [Double] -> Double -> Double
-angTerm symb1 symb2 pa pb gamma = DL.foldr1 (*) [ ix (l1 x) (l2 x) (pa !! x) (pb !! x) gamma |x <- [0..2]]
-  where [l1,l2] = DL.map funtyp2Index [symb1,symb2]
-
-        
+                         
 -- ==============> 2-CENTER OVERLAP INTEGRAL <=================================
 
--- overlaping between two primitive gaussian function between arbitrary-l functions
--- <A|B>
+-- | overlaping between two primitive gaussian function between arbitrary-l functions  <A|B>
 
 -- S12 = *exp[−a1*b1(Rab)^2/gamma]IxIyIz
 
 -- where Ix = sum f2i (l1,l2,PAx,PBx) ((2i-1)!! / (2gamma)^i sqrt (pi/gamma) for i = 0,l1 + l2 / 2 only the even i
 -- f2k is defined above in the module
 
-mtxOverlap :: VU.Unbox Double => [NucCoord] -> [Basis] -> Nelec -> Array U DIM1 Double
-mtxOverlap coords basis nelec = LA.list2ArrDIM1 dim flatMtx
-  where flatMtx = parMap rdeepseq sijTotal cartProd
-        dim = (nelec^2 + nelec) `div`2
-        list = zip coords basis
-        cartProd = do
-          (i,(r1,b1)) <- zip [1..] list
-          (j,(r2,b2)) <- zip [1..] list
-          guard (i<=j)
-          return (r1,b1,r2,b2)
-{-# INLINE mtxOverlap #-}
+mtxOverlap :: Monad m => [AtomData] -> m (Array U DIM1 Double) 
+mtxOverlap !atoms = computeUnboxedP . fromFunction (Z:.dim) $
+ (\(Z:.k) -> let (i,j) = LA.indexFlat2DIM2 norbital k
+                 [(r1,cgf1),(r2,cgf2)] = fmap calcIndex $ [i,j]
+             in sijContracted r1 r2 cgf1 cgf2)
+             
+  where norbital = sum . fmap (length . getBasis) $ atoms
+        dim = (norbital^2 + norbital) `div`2
+        calcIndex = LA.calcCoordCGF atoms
 
-
-sijTotal :: (NucCoord,Basis,NucCoord,Basis) -> Double
-sijTotal (r1,b1,r2,b2) = DL.foldl1' (+) nonZero
-  where nonZero =  do
-        g1 <- b1
-        g2 <- b2
-        let [l1,l2] = DL.map getfunTyp [g1,g2]
-        guard ((sort [l1,l2]) `notElem` overlapZero)
-        let orb1 = (r1,g1)
-            orb2 = (r2,g2)
-        return $ ( orb1 <<|>> orb2 )
-                           
-       
-sijContracted :: (NucCoord,CGF) -> (NucCoord,CGF) -> Double
-sijContracted (r1,cgf1) (r2,cgf2) =
-                 case rab2 r1 r2 > 1.0e-9  of
-                      False -> 1.0
-                      True -> DL.foldl1' (+) $ do
+-- | Overlap matrix entry calculation between two Contracted Gaussian functions
+sijContracted :: NucCoord -> NucCoord -> CGF -> CGF -> Double
+sijContracted !r1 !r2 !cgf1 !cgf2 =
+                 if cgf1 == cgf2 && r1 == r2
+                                  then  1.0
+                                  else  sum $ do
                               g1 <- getPrimitives cgf1
                               g2 <- getPrimitives cgf2
-                              let [l1,l2] = DL.map getfunTyp [cgf1,cgf2]
+                              let [l1,l2] = fmap getfunTyp [cgf1,cgf2]
                                   gauss1 = Gauss r1 l1 g1
                                   gauss2 = Gauss r2 l2 g2
                               return (gauss1 <||> gauss2 )
 
+
+-- | Primitive overlap terms                              
 sab :: Gauss -> Gauss -> Double
-sab (Gauss r1 l1 g1@(_c1,e1)) (Gauss r2 l2 g2@(_c2,e2)) = sgg' *  ang * (pi/ gamma)**1.5
-
-  where sgg' = sgg gauss1 gauss2
-        gauss1 = (r1,g1)
-        gauss2 = (r2,g2)
-        ang  = angTerm l1 l2 pa pb gamma
-        p = meanp (e1,e2) r1 r2
+sab g1@(Gauss !r1 !shellA (!c1,!e1)) g2@(Gauss !r2 !shellB (!c2,!e2)) =
+   (c1*c2) * (product $!! [obaraSaika gamma (s00 !! x) (pa !! x) (pb !! x) (l1 x) (l2 x) |x <- [0..2]])
+  
+  where [l1,l2] = fmap funtyp2Index [shellA,shellB]
         [pa,pb] = (DL.zipWith (-) p) `fmap`  [r1,r2]
-        gamma = e1 + e2
-                              
-             
-sgg :: (NucCoord,GaussPrimitive) -> (NucCoord,GaussPrimitive) -> Double
-sgg (r1,(c1,e1)) (r2,(c2,e2)) = c1*c2 * exp (-e1*e2*r/(e1+e2))
-  where r = rab2 r1 r2
+        p = meanp (e1,e2) r1 r2
+        expo = \x2 -> exp $ -mu * x2
+        s00 = fmap ((*cte) . expo . (^2)) $  DL.zipWith (-) r1 r2
+        cte = sqrt $ pi/ gamma
+        gamma = e1+ e2
+        mu = e1*e2/gamma
 
+-- | ObaraSaika Scheme to calculate overlap integrals
+obaraSaika ::Double -> Double -> Double -> Double -> Int -> Int  -> Double
+obaraSaika !gamma !s00 !pax !pbx !i !j = s i j
+
+  where pred2 = pred . pred
+        c = recip $ 2.0 * gamma
+        s !m !n | m < 0 || n < 0   =  0.0
+                | all (== 0) [m,n] =  s00
+                | m == 0 =   pbx * (s 0 (pred n)) + c* (n_1 * (s 0 $ pred2 n))
+                | n == 0 =   pax * (s (pred m) 0) + c*(m_1 * (s (pred2 i) 0))
+                | otherwise  =   pax * (s (pred m) n) + c * (m_1 * (s (pred2 m) n) +
+                               (fromIntegral n) * (s (pred m) $ pred n))
+
+          where [m_1,n_1] = fmap (fromIntegral . pred) [m,n]
+         
+
+         
+-- ====================> HAMILTONIAN CORE <=======================
+
+-- | Core Hamiltonian Matrix Calculation
+hcore :: Monad m => [AtomData] -> m (Array U DIM1 Double)
+hcore !atoms  = computeUnboxedP . fromFunction (Z:. dim) $
+ (\(Z:.k) -> let (i,j) = LA.indexFlat2DIM2 norbital k
+                 [atomi,atomj] = fmap calcIndex $ [i,j]
+                 derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
+                 sumVij = sum $!! DL.zipWith (\z rc -> ((-z) * atomi <<|Vij rc derv |>> atomj)) atomicZ coords
+             in (atomi <<|Tij|>> atomj) + sumVij)
+
+  where coords = fmap getCoord atoms
+        atomicZ = fmap getZnumber atoms
+        norbital = sum . fmap (length . getBasis) $ atoms
+        dim = (norbital^2 + norbital) `div`2
+        calcIndex = LA.calcCoordCGF atoms
+
+-- hcoreStrat :: Monad m => [AtomData] -> m (Array U DIM1 Double)
+-- hcore !atoms  = return $ parMap 
+--                  computeUnboxedP . fromFunction (Z:. dim) $
+--  (\(Z:.k) -> let (i,j) = LA.indexFlat2DIM2 norbital k
+--                  [atomi,atomj] = fmap calcIndex $ [i,j]
+--                  derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
+--                  sumVij = sum $!! DL.zipWith (\z rc -> ((-z) * atomi <<|Vij rc derv |>> atomj)) atomicZ coords
+--              in (atomi <<|Tij|>> atomj) + sumVij)
+
+--   where coords = fmap getCoord atoms
+--         atomicZ = fmap getZnumber atoms
+--         norbital = sum . fmap (length . getBasis) $ atoms
+--         dim = (norbital^2 + norbital) `div`2
+--         calcIndex = LA.calcCoordCGF atoms
              
 -- ==================> Kinetic Energy IntegralsEvaluation  <========================
--- the kinetic integral for two S-functions is
--- < A| -0.5*nabla^2 | B > = (3*w - 2*w*w*rab2 ) * <A|B>
--- where w = e1*e2 / (e1 +e2)
+-- |the kinetic integral for two S-functions is
+-- | < A| -0.5*nabla^2 | B > = (3*w - 2*w*w*rab2 ) * <A|B>
+-- | where w = e1*e2 / (e1 +e2)
 
---for arbitrary angular momentum functions is
--- < A| -0.5*nabla^2 | B > = Ix Iy Iz
--- where Ix = 0.5* l1*l2 *<-1|-1>x + 2a1b1<+1|+1>x - a1*l2*<+1|-1>x - b1*l1*<-1|+1>x
---       |+1>x = X^(l1+1) Y^m1 Z^n1 exp(-a1*Ra^2)
---       |-1>x = X^(l1-1) Y^m1 Z^n1 exp(-a1*Ra^2)
+-- | For arbitrary angular momentum functions is
+-- | < A| -0.5*nabla^2 | B > = c1*c2 (TijSklSmn + SijTklSmn + SijSklTmn)
+-- |where Tij = -2b^2 S(i,j+1) + b(2j+1)S(i,j) - 0.5j(j-1)S(i,j-2)
  
-
-arrayKinetic :: [NucCoord] -> [Basis] ->  Array U DIM1 Double
-arrayKinetic coords basis = LA.list2ArrDIM1 dim cartProd
-  where n = length basis
-        dim = (n^2 + n) `div`2        
-        list = zip coords basis
-        cartProd = do
-          (i,(r1,b1)) <- zip [1..] list
-          (j,(r2,b2)) <- zip [1..] list
-          guard (i<=j)
-          return $ (r1,b1) <<|Tij|>> (r2,b2)        
-{-# INLINE arrayKinetic #-}
-
-tijTotal :: (NucCoord,Basis) -> (NucCoord,Basis) -> Double
-tijTotal (r1, b1) (r2, b2) = DL.foldl1' (+) [tijContracted (r1,g1) (r2,g2)  | g1 <- b1, g2 <- b2]
-
-
+-- | Kinetic Energy operator matrix representation
 tijContracted :: (NucCoord,CGF) -> (NucCoord,CGF) -> Double
-tijContracted (r1,cgf1) (r2,cgf2) =
-       DL.foldl1' (+) $ do
+tijContracted (!r1,!cgf1) (!r2,!cgf2) =
+          sum $!! do
               g1 <- getPrimitives cgf1
               g2 <- getPrimitives cgf2
-              let [l1,l2] = DL.map getfunTyp [cgf1,cgf2]
+              let [l1,l2] = fmap getfunTyp [cgf1,cgf2]
                   gauss1 = Gauss r1 l1 g1 
                   gauss2 = Gauss r2 l2 g2
               return ( gauss1 <| Tij |> gauss2 )  
- 
- 
+
+-- | Primitive kinetic energy terms          
 tab :: Gauss -> Gauss -> Double
-tab g1@(Gauss r1 symb1 (_c1,e1)) g2@(Gauss r2 symb2 (_c2,e2)) = DL.foldl1' (+) [ tx x (j x) (k x) | x <- [0..2]]
-  where [j,k] = DL.map funtyp2Index [symb1,symb2]
-        tx i lang1 lang2 =
-                     let  [gauss1plus,gauss2plus]   = DL.zipWith (|+>) [g1,g2] $ repeat i 
-                          [gauss1minus,gauss2minus] = DL.zipWith (|->) [g1,g2] $ repeat i                      
-                          [l1,l2] = DL.map fromIntegral [lang1,lang2] 
-                          
-                     in  0.5*l1*l2*(gauss1minus  <||> gauss2minus) + 2.0*e1*e2*(gauss1plus  <||> gauss2plus)                                          
-                         - e1*l2* (gauss1plus  <||> gauss2minus) - e2*l1* (gauss1minus  <||> gauss2plus)
+tab gA@(Gauss !r1 !shell1 (!c1,!e1)) gB@(Gauss !r2 !shell2 (!c2,!e2)) =
+   c1*c2 * (sum . fmap product $!! permute [\x -> tx x (j x) (k x),\x -> sx x (j x) (k x),\x -> sx x (j x) (k x)] [0..2])
 
-
-
-up :: Gauss -> Int -> Gauss
-up gauss i = gauss {funtype=newL} 
-  where newL = fromMaybe (error "failure in the integration scheme") $ M.lookup (symb1,i) obaraSaikaUp       
-        symb1 = funtype gauss
-
-  
-down :: Gauss -> Int -> Gauss
-down gauss i = gauss {funtype=newL} 
-  where newL = fromMaybe (error "failure in the integration scheme") $ M.lookup (symb1,i) obaraSaikaDown 
-        symb1 = funtype gauss
-
-
-
--- ======================> McMURCHIE -DAVIDSON SCHEME <=========================
--- The integrals of three and four centers are implemented according to chapter 9
--- of the book "Molecular Electronic-Structure Theory" by Trygve Helgaker,
--- Poul Jorgensen and Jeppe Olsen.
-
--- COEFFICIENT RECURSION FORMULA 
- -- nucleus electron attraction
-
-vijTotal :: (NucCoord, Basis) -> NucCoord -> (NucCoord, Basis) -> Double
-vijTotal  (ra, b1) rc (rb, b2) =  sum [vijContracted (ra,g1) rc (rb,g2) | g1 <- b1, g2 <- b2]       
-
+  where [j,k] = fmap funtyp2Index [shell1,shell2]
+        sx i lang1 lang2 = obaraSaika gamma (s00 !! i) (pa !! i) (pb !! i) lang1 lang2
+        tx i lang1 lang2 = let [l1,l2] = fmap fromIntegral [lang1,lang2]
+                           in -2.0 * e2^2 * (sx i lang1 (lang2+2)) +
+                              e2*(2*l2 +1)* (sx i lang1 lang2) -
+                              0.5*l2*(l2-1)*(sx i lang1 (lang2 -2))
+        cte = sqrt (pi/ gamma)
+        s00 = fmap ((*cte) . expo . (^2)) $  DL.zipWith (-) r1 r2
+        t00 = \x -> e1 - 2*e1^2 *((pa !! x)^2 + (recip $ 2*gamma)) * (s00 !! x )
+        expo = \x2 -> exp $ -mu * x2
+        [pa,pb] = (DL.zipWith (-) p) `fmap`  [r1,r2]
+        p = meanp (e1,e2) r1 r2
+        gamma = e1+ e2
+        mu = e1*e2/gamma        
         
-vijContracted :: (NucCoord,CGF) -> NucCoord -> (NucCoord,CGF) -> Double
-vijContracted (ra,cgf1) rc (rb,cgf2) = DL.foldl1' (+) cartProd 
-                                       
-  where cartProd = do
-           g1 <- getPrimitives cgf1
-           g2 <- getPrimitives cgf2
-           let [l1,l2] = DL.map getfunTyp [cgf1,cgf2]
-               gauss1 =  Gauss ra l1 g1
-               gauss2 =  Gauss rb l2 g2
-           return $ vijHermite gauss1 gauss2 rc
-                   
-vijHermite :: Gauss -> Gauss -> NucCoord -> Double
-vijHermite g1 g2 rc = cte * (mcMurchie symbols [ra,rb,rc] (e1,e2))
-  where cte = c1 * c2 * 2.0 * (pi/gamma) 
-        gamma = e1+e2     
-        [ra,rb] =  nucCoord `fmap` [g1,g2]
-        symbols = funtype `fmap` [g1,g2]
-        [(c1,e1),(c2,e2)] = gaussP `fmap` [g1,g2]
-
-        
-mcMurchie :: [Funtype] -> [NucCoord]  -> (Exponent,Exponent) -> Double    
-mcMurchie symbols [ra,rb,rc] (e1,e2) = 
-  let coeff = DL.unfoldr (calcHermCoeff [rpa,rpb] gamma) seedC 
-      rtuv  = DL.unfoldr (calcHermIntegral rpc gamma) seedI
-      gamma = e1 + e2
-      nu = e1*e2/gamma
-      rp = meanp (e1,e2) ra rb
-      [rab,rpa,rpb,rpc] = restVect `fmap` [(ra,rb),(rp,ra),(rp,rb),(rp,rc)]
-      seedC = initilized_Seed_Coeff symbols rab nu
-      seedI = initilized_Seed_Integral symbols rpc gamma
-      
-  in DL.foldl1' (+) $ DL.zipWith (*) coeff rtuv 
-        
-  
-calcHermCoeff :: [NucCoord] -> Double -> HermiteStateCoeff-> Maybe (Double,HermiteStateCoeff)
-calcHermCoeff rpab gamma stCoeff = do
-    ls <- safeHead listC
-    let newSt = stCoeff {getmapC = newMap,getkeyC = tail listC}
-        (val,newMap) = fun ls 
-    return (val,newSt)     
-              
-  where listC = getkeyC stCoeff
-        oldmap = getmapC stCoeff
-        fun [xpa,ypa,zpa] = runState (hermEij xpa 0 >>= \e1 ->
-                            hermEij ypa 1 >>= \e2 ->  
-                            hermEij zpa 2 >>= \e3 ->
-                            return $ e1*e2*e3 ) oldmap        
-                          
-        hermEij k label = get >>= \st -> 
-                          let xpab = DL.map (\r -> r !! label) rpab
-                              ijt = getijt k
-                              Just (x,newMap) = (lookupM k st) `mplus` 
-                                   Just (recursiveHC xpab gamma k st ijt)
-                          in put newMap >> return x                                              
-        
-        
-calcHermIntegral :: NucCoord  -> Double -> HermiteStateIntegral -> Maybe (Double,HermiteStateIntegral)
-calcHermIntegral rpc gamma stIntegral =  do
-    hi <- safeHead listI
-    let Just (val,newMap) = fun hi
-        newSt = stIntegral {getmapI = newMap,getkeyI = tail listI} 
-    return (val,newSt)                     
-    
-  where listI = getkeyI stIntegral
-        oldmap = getmapI stIntegral
-        fun hi = (lookupM hi oldmap) `mplus` Just (recursiveHI rpc gamma hi oldmap (getijt hi))
-
-
-recursiveHC :: [Double] -> Double -> HermiteIndex ->  MapHermite -> [Int] -> (Double, MapHermite)
-recursiveHC pab@[xpa,xpb] gamma hi mapC [i,j,t]
-  
-       |(i+j) < t = (0.0,mapC)
- 
-       |t == 0 && i>=1 = let ([cij0,cij1],mapO) = fun [1,0,0] [1,0,(-1)]                                                                      
-                             val = xpa*cij0 + cij1
-                             newMap = M.insert hi val mapO                              
-                         in (val,newMap)
-                                                                    
-       |t == 0 && j>=1 = let ([cij0,cij1],mapO) = fun [0,1,0] [0,1,(-1)]
-                             val = xpb*cij0 + cij1
-                             newMap = M.insert hi val mapO                                                           
-                         in (val,newMap)
-                                                                                                   
-       |otherwise =      let ([aijt,bijt],mapO) = fun [1,0,1] [0,1,1]
-                             [i',j',t'] = fromIntegral `fmap`  [i,j,t]
-                             val = recip (2.0*gamma*t') * (i'*aijt + j'*bijt)     
-                             newMap = M.insert hi val mapO                                                                                        
-                         in (val,newMap)
-                                                                        
-  where fun xs ys = runState (sequence [fun2 xs, fun2 ys]) mapC
-        fun2 xs = get >>= \st -> let key = sub xs
-                                     funAlternative = recursiveHC pab gamma key st
-                                     (v,m) = boyMonplus funAlternative key st                                                                          
-                                 in put m >> return v                                     
-        sub [a,b,c] = hi {getijt = [i-a,j-b,t-c]}                                                    
-        
-recursiveHI :: NucCoord -> Double -> HermiteIndex-> MapHermite -> [Int] -> (Double,MapHermite)
-recursiveHI rpc gamma hi mapI [t,u,v] 
-  
- | any (<0) [t,u,v] = (0.0,mapI)          
-
- | t >= 1 = let ([boy1,boy2],mapO) = fun [2,0,0] [1,0,0] 
-                val = (fromIntegral t -1)*boy1 + (rpc !! 0)*boy2
-                newM = M.insert hi val mapI  
-            in (val,newM)
-                                                 
- | u >= 1 = let ([boy1,boy2],mapO) = fun [0,2,0] [0,1,0] 
-                val = (fromIntegral u -1)*boy1 + (rpc !! 1)*boy2    
-                newM = M.insert hi val mapI  
-            in (val,newM)
-                                           
- | v >= 1 = let ([boy1,boy2],mapO) = fun [0,0,2] [0,0,1] 
-                val = (fromIntegral v -1)*boy1 + (rpc !! 2)*boy2 
-                newM = M.insert hi val mapI  
-            in (val,newM)                                           
-            
- | otherwise =  let arg = (gamma*) . sqrt . sum . (fmap (^2))  $ rpc
-                    x1 = (-2.0*gamma)^n
-                    val = x1* boyFunction n arg
-                    newM = M.insert hi val mapI  
-                in (val,newM)                                                         
-      
-  where fun xs ys = runState (sequence [fun2 xs, fun2 ys]) mapI
-        fun2 xs = get >>= \st -> let key = sub xs
-                                     funAlternative = recursiveHI rpc gamma key st
-                                     (v,m) = boyMonplus funAlternative key st
-                                 in put m >> return v
-        n = getN hi -- order of the boy function
-        sub [a,b,c] = hi {getN = n + 1, getijt = [t-a,u-b,v-c]}        
-
-        
-boyMonplus :: ([Int] -> (Double,MapHermite)) -> HermiteIndex-> MapHermite -> (Double,MapHermite)
-boyMonplus fun k m = fromMaybe err $ (lookupM k m) `mplus` (Just (res,newM))
-  where (res,oldmap) = fun (getijt k)
-        newM = M.insert k res oldmap 
-        err = error "failure in the recursive Hermite Procedure"
-  
-
-boyFunction :: Int -> Double -> Double 
-boyFunction m arg = let boy = \x -> x^(2*m) * exp(-arg*x*x)
-                        maxerror = 1E-10 -- maximum allow error
-                        (val,numerror) = integrateQNG maxerror boy 0 1
-                    in val 
-
-lookupM :: Ord k => k -> M.Map k a -> Maybe (a , M.Map k a)
-lookupM k m = do 
-              val <- M.lookup k m
-              return (val,m)                                                             
-              
-
--- we sent to listIndexes two Funtypes and the function return 
--- the exponent for x,y,z according to the l-number of the
--- orbital that thos Funtypes represent
--- therefore for ls = [l1,m1,n1,l2,m2,n2]
-
-listIndexes :: [Funtype] -> [Int]        
-listIndexes symbols = ls
-  where ls = funtyp2Index <$> symbols <*> [0..2]
-
-  
-initilized_Seed_Coeff :: [Funtype] -> NucCoord -> Double -> HermiteStateCoeff        
-initilized_Seed_Coeff symbols rab mu = HermiteStateCoeff mapC0 listC
-  where mapC0 = DL.foldl' (\acc (k, v) -> M.insert k v acc) M.empty $ DL.zip k0 e0 
-        listC = genCoeff_Hermite symbols 
-        k0 = [Xpa [0, 0, 0], Ypa [0, 0, 0], Zpa [0, 0, 0]] 
-        e0 = DL.map (\x -> exp(-mu*(x^2))) rab
-        
-        
-genCoeff_Hermite :: [Funtype] -> [[HermiteIndex]]
-genCoeff_Hermite symbols = do
-  i <-[0..l1+l2]
-  j <-[0..m1+m2]
-  k <-[0..n1+n2]
-  return $ [Xpa [l1,l2,i], Ypa [m1,m2,j], Zpa [n1,n2,k]] 
-  where [l1,m1,n1,l2,m2,n2] = listIndexes symbols        
-
-
-initilized_Seed_Integral :: [Funtype] -> NucCoord -> Double -> HermiteStateIntegral
-initilized_Seed_Integral symbols rpc gamma = HermiteStateIntegral mapI0 listI 
-  where mapI0 = M.insert k0' f0 M.empty
-        k0'= Rpa 0 [0, 0, 0] 
-        y= gamma*rpc2
-        f0 = if (y > 0.0e-5) then 0.5* sqrt (pi/(y)) * erf(sqrt y) else 1.0
-        rpc2 = sum $ DL.map (^2) rpc
-        listI = genCoeff_Integral symbols
-        
-                
-genCoeff_Integral :: [Funtype] -> [HermiteIndex]
-genCoeff_Integral symbols = do
-  t <-[0..l1+l2]
-  u <-[0..m1+m2]
-  v <-[0..n1+n2]
-  return $ Rpa 0 [t,u,v] 
-  where [l1,m1,n1,l2,m2,n2] = listIndexes symbols        
-  
- 
-hcore :: [NucCoord] -> [Basis] -> [ZNumber] -> Nelec -> Array U DIM1 Double
-hcore coords basis atomicZ nelec =  LA.list2ArrDIM1 dim (cartProd `using` parList rdeepseq)
- 
- where dim = (nelec^2 + nelec) `div`2
-       list = zip coords basis       
-       cartProd = do
-          (i,atomi) <- zip [1..] list
-          (j,atomj) <- zip [1..] list
-          guard (i<=j)
-          let sumVij = foldl1' (+) . getZipList $
-                       (\z rc -> ((-z) * atomi <<|Vij rc|>> atomj))
-                         <$> ZipList atomicZ <*> ZipList coords
-          return $ (atomi <<|Tij|>> atomj) + sumVij
-                    
-           
+permute :: [a -> b] -> [a] -> [[b]]
+permute [!f,!g,!h] !xs = DL.zipWith (DL.zipWith ($)) [[f,g,h],[g,f,h],[g,h,f]] $ repeat xs
 
 -- =====================> TWO ELECTRON INTEGRALS <=========================================
 
--- <XaXb|XcXd> = 2 * <A|B> * <C|D> * sqrt (rho/pi) * Fo (rho(P - Q)^2) where Fo(x)= (pi/x)^½ * erf(x^½) P = e1*Ra + e2*Rb / (e1+e2)  
+-- <XaXb|XcXd> = 2 * <A|B> * <C|D> * sqrt (rho/pi) * Fo (rho(P - Q)^2) where Fo(x)= (pi/x)^½ * erf(x^½) P = e1*Ra + e2*Rb / (e1+e2)
 -- rho = (e1+e2)(e3+e4)/(e1+e2+e3+e4)
 
-evalIntbykey :: [NucCoord]-> [Basis]-> [[Int]]-> [Double]
-evalIntbykey coord basis keys = (integrals keys) `using` parList rdeepseq
-  where integrals =  DL.map (\xs -> let bs = DL.map (\i -> basis !! i) xs
-                                        rs = DL.map (\j -> coord !! j) xs                                       
-                                        atoms = getZipList $ AtomData <$> ZipList rs <*> ZipList bs                       
-                                    in  fourCenterInt atoms  )
-        
-        
-fourCenterInt ::  [AtomData] -> Double       
-fourCenterInt atoms = DL.foldl1' (+) cartProd
-  where ([ra,rb,rc,rd],[b1,b2,b3,b4]) = (fmap getCoord) &&& (fmap getBasis) $ atoms
-        cartProd = [contracted4Centers [(ra,cgf1),(rb,cgf2),(rc,cgf3),(rd,cgf4)] |cgf1 <- b1, cgf2 <- b2, cgf3 <- b3, cgf4 <- b4]
+-- | Main function to calculate the Coulomb (J) and Interchange Integrals using the
+--  indexes of the atomic basis <ab|cd>
+evalIntbykeyStrat :: Monad m => [AtomData] -> [[Int]] -> m (Array U DIM1 Double)
+evalIntbykeyStrat atoms keys = return $  R.fromListUnboxed (ix1 dim) $ parMap rdeepseq contracted4Centers centers
+  where dim      = length keys
+        centers  = fmap (fmap (LA.calcCoordCGF atoms)) keys 
 
+-- | Calculate electronic interaction among the four center contracted Gaussian functions
 contracted4Centers :: [(NucCoord,CGF)] -> Double
-contracted4Centers [(ra,cgf1), (rb,cgf2), (rc,cgf3), (rd,cgf4)] = DL.foldl1' (+) cartProd
-
+contracted4Centers [(!ra,!cgf1), (!rb,!cgf2), (!rc,!cgf3), (!rd,!cgf4)] = sum cartProd
   where [l1,l2,l3,l4] = getfunTyp `fmap` [cgf1,cgf2,cgf3,cgf4]
-        cartProd = do               
+        cartProd = do
           g1 <- getPrimitives cgf1
           g2 <- getPrimitives cgf2
           g3 <- getPrimitives cgf3
           g4 <- getPrimitives cgf4
-          let gauss = getZipList $ Gauss <$> ZipList[ra,rb,rc,rd] <*> 
-                                   ZipList [l1,l2,l3,l4] <*> ZipList [g1,g2,g3,g4]
+          let gauss = DL.zipWith3 Gauss [ra,rb,rc,rd] [l1,l2,l3,l4] [g1,g2,g3,g4]
           return $ twoElectronHermite gauss
-  
-  
-twoElectronHermite :: [Gauss] -> Double 
-twoElectronHermite gs = (cte *) . foldl1' (+) . DL.zipWith (*) coeff1 $ 
-                        [mcMurchie2 coeff2 rpq alpha abcs tuv| tuv <- coefftuv]
 
-  where coefftuv = genCoeff_Integral [symb1,symb2]
-        abcs =  genCoeff_Integral [symb3,symb4]
+twoElectronHermite :: [Gauss] -> Double
+twoElectronHermite !gs = (cte *) . sum . DL.zipWith (*) coeff1 $!!
+                        [mcMurchie2 coeff2 rpq alpha abcs tuv | tuv <- coefftuv]
+
+  where coefftuv = genCoeff_Integral [symb1,symb2] derv
+        abcs =  genCoeff_Integral [symb3,symb4] derv
         coeff1 = DL.unfoldr (calcHermCoeff [rpa,rpb] p) seedC1
         coeff2 = DL.unfoldr (calcHermCoeff [rqc,rqd] q) seedC2
         seedC1 = initilized_Seed_Coeff [symb1,symb2] rab mu
         seedC2 = initilized_Seed_Coeff [symb3,symb4] rcd nu
-        [ra,rb,rc,rd] = nucCoord `fmap` gs      
-        [symb1,symb2,symb3,symb4] = funtype `fmap` gs      
+        [ra,rb,rc,rd] = nucCoord `fmap` gs
+        [symb1,symb2,symb3,symb4] = funtype `fmap` gs
         ps = gaussP `fmap` gs
         ([c1,c2,c3,c4],[e1,e2,e3,e4]) = (fmap fst ) &&& (fmap snd ) $ ps
         rp = meanp (e1,e2) ra rb
@@ -660,22 +336,275 @@ twoElectronHermite gs = (cte *) . foldl1' (+) . DL.zipWith (*) coeff1 $
         [mu,nu] = (\(a,b) -> a*b* (recip $ a + b)) `fmap` [(e1,e2),(e3,e4)]
         [p,q] = uncurry (+) `fmap` [(e1,e2),(e3,e4)]
         alpha = p*q/(p+q)
-        cte = (c1*c2*c3*c4*) . (2.0*pi**2.5 *) . recip $ (p * q ) * (sqrt $ p + q)
+        cte = (c1*c2*c3*c4*) . (*(2.0*pi**2.5)) . recip $ (p * q ) * (sqrt $ p + q)
+        derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
 
-        
+
 mcMurchie2 :: [Double] -> NucCoord -> Double -> [HermiteIndex] -> HermiteIndex -> Double
-mcMurchie2 coeff2 rpq alpha abcs' tuv' =
-  DL.foldl1' (+) . DL.zipWith3 (\x y z -> x*y*z) sgns coeff2  $ integrals 
-  
+mcMurchie2 !coeff2 !rpq !alpha !abcs' !tuv' = sum $!!  DL.zipWith3 (\x y z -> x*y*z) sgns coeff2  integrals
   where tuv = getijt tuv'
         abcs = getijt `fmap` abcs'
         sgns = (\xs-> (-1.0)^(sum xs)) `fmap` abcs
-        integrals = DL.unfoldr (calcHermIntegral rpq alpha) seedI 
-        seedI = HermiteStateIntegral mapI0 listI 
+        integrals = DL.unfoldr (calcHermIntegral rpq alpha) seedI
+        seedI = HermiteStateIntegral mapI0 listI
         mapI0 = M.insert k0' f0 M.empty
         k0'= Rpa 0 [0, 0, 0]
-        rp2 = sum $ DL.map (^2) rpq
+        rp2 = sum $ fmap (^2) rpq
         y = alpha*rp2
-        f0 = if (y > 0.0e-5) then 0.5* sqrt (pi/(y)) * erf(sqrt y) else 1.0
-        listI = Rpa 0 `fmap` (DL.map (DL.zipWith (+) tuv) abcs )
+        f0 = boysF 0 y
+        listI = Rpa 0 `fmap` (fmap (DL.zipWith (+) tuv) abcs )
+
+
+-- ======================> McMURCHIE -DAVIDSON SCHEME <=========================
+-- | The integrals of three and four centers are implemented according to chapter 9
+--   of the book "Molecular Electronic-Structure Theory" by Trygve Helgaker,
+--   Poul Jorgensen and Jeppe Olsen.
+
+-- | Nuclei-Electron matrix operator presentation        
+vijContracted :: (NucCoord,CGF) -> NucCoord -> (NucCoord,CGF) -> CartesianDerivatives -> Double
+vijContracted (!ra,!cgf1) !rc (!rb,!cgf2) derv = sum $!
+        do g1 <- getPrimitives cgf1
+           g2 <- getPrimitives cgf2
+           let [l1,l2] = fmap getfunTyp [cgf1,cgf2]
+               gauss1 =  Gauss ra l1 g1
+               gauss2 =  Gauss rb l2 g2
+           return $!! vijHermite gauss1 gauss2 rc derv
+           
+-- | Hermite auxiliar function calculations according to the McMURCHIE -DAVIDSON scheme        
+vijHermite :: Gauss -> Gauss -> NucCoord -> CartesianDerivatives -> Double
+vijHermite !g1 !g2 !rc derv = ((-1)^sumDervExpo) * cte * (mcMurchie shells [ra,rb,rc] (e1,e2) derv)
+  where cte = c1 * c2 * 2.0 * (pi/gamma) 
+        gamma = e1+e2     
+        [ra,rb] =  nucCoord `fmap` [g1,g2]
+        shells = funtype `fmap` [g1,g2]
+        [(c1,e1),(c2,e2)] = gaussP `fmap` [g1,g2]
+        sumDervExpo = getExponentDerivatives derv
+
+--  McMURCHIE -DAVIDSON scheme of the primitive gaussians       
+mcMurchie :: [Funtype] -> [NucCoord]  -> (Exponent,Exponent) -> CartesianDerivatives -> Double
+mcMurchie !shells [!ra,!rb,!rc] (!e1,!e2) derv =
+  let coeff = DL.unfoldr (calcHermCoeff [rpa,rpb] gamma) seedC 
+      rtuv  = DL.unfoldr (calcHermIntegral rpc gamma) seedI
+      gamma = e1 + e2
+      nu = e1*e2/gamma
+      rp = meanp (e1,e2) ra rb
+      [rab,rpa,rpb,rpc] = restVect `fmap` [(ra,rb),(rp,ra),(rp,rb),(rp,rc)]
+      seedC = initilized_Seed_Coeff shells rab nu
+      seedI = initilized_Seed_Integral shells rpc gamma derv
+      
+  in  sum $!! DL.zipWith (*) coeff rtuv
+        
+--  | Hermite Coefficients calculation using the maybe monad  
+calcHermCoeff :: [NucCoord] -> Double -> HermiteStateCoeff-> Maybe (Double,HermiteStateCoeff)
+calcHermCoeff !rpab !gamma !stCoeff = do
+    ls <- safeHead listC
+    let  (val,newMap) = updateMap ls
+         newSt = stCoeff {getmapC = newMap,getkeyC = tail listC}
+    return (val,newSt)
+
+  where listC = getkeyC stCoeff
+        oldmap = getmapC stCoeff
+        updateMap [!xpa,!ypa,!zpa] = runState (hermEij xpa 0 >>= \e1 ->
+                            hermEij ypa 1 >>= \e2 ->
+                            hermEij zpa 2 >>= \e3 ->
+                            return $ e1*e2*e3 ) oldmap
+
+        hermEij !k !label = get >>= \st ->
+                            let xpab = fmap (\r -> r !! label) rpab
+                                ijt = getijt k
+                                Just (!x,!newMap) = (lookupM k st) `mplus` Just (recursiveHC xpab gamma k st ijt)
+                          in put newMap >> return x
+        
+-- | Hermite analytical integrals       
+calcHermIntegral :: NucCoord  -> Double -> HermiteStateIntegral -> Maybe (Double,HermiteStateIntegral)
+calcHermIntegral !rpc !gamma !stIntegral =  do
+    hi <- safeHead listI
+    let Just (val,newMap) = fun hi
+        newSt = stIntegral {getmapI = newMap,getkeyI = tail listI}
+    return (val,newSt)
+
+  where listI = getkeyI stIntegral
+        oldmap = getmapI stIntegral
+        fun hi = (lookupM hi oldmap) `mplus` Just (recursiveHI rpc gamma hi oldmap (getijt hi))
+
+-- |Recursive Hermite Coefficients
+recursiveHC :: [Double] -> Double -> HermiteIndex ->  MapHermite -> [Int] -> (Double, MapHermite)
+recursiveHC pab@[!xpa,!xpb] !gamma !hi !mapC ![i,j,t]
+
+       |(i+j) < t = (0.0,mapC)
+
+       |t == 0 && i>=1 = let ([cij0,cij1],mapO) = updateMap [1,0,0] [1,0,(-1)]
+                             val = xpa*cij0 + cij1
+                             newMap = M.insert hi val mapO
+                         in (val,newMap)
+
+       |t == 0 && j>=1 = let ([cij0,cij1],mapO) = updateMap [0,1,0] [0,1,(-1)]
+                             val = xpb*cij0 + cij1
+                             newMap = M.insert hi val mapO
+                         in (val,newMap)
+
+       |otherwise =      let ([aijt,bijt],mapO) = updateMap [1,0,1] [0,1,1]
+                             [i',j',t'] = fromIntegral `fmap`  [i,j,t]
+                             val = recip (2.0*gamma*t') * (i'*aijt + j'*bijt)
+                             newMap = M.insert hi val mapO
+                         in (val,newMap)
+
+  where updateMap !xs !ys = runState (sequence [calcVal xs, calcVal ys]) mapC
+        calcVal !xs = get >>= \st -> let key = sub xs
+                                         funAlternative = recursiveHC pab gamma key st
+                                         (v,m) = boyMonplus funAlternative key st
+                                     in put m >> return v
+        sub [a,b,c] = hi {getijt = [i-a,j-b,t-c]}
+        
+-- |Recursive Hermite Integrals        
+recursiveHI :: NucCoord -> Double -> HermiteIndex-> MapHermite -> [Int] -> (Double,MapHermite)
+recursiveHI !rpc !gamma !hi !mapI [!t,!u,!v]
+
+ | any (<0) [t,u,v] = (0.0,mapI)
+
+ | t >= 1 = let ([boy1,boy2],mapO) = updateMap [2,0,0] [1,0,0]
+                val = (fromIntegral t -1)*boy1 + (rpc !! 0)*boy2
+                newM = M.insert hi val mapI
+            in (val,newM)
+
+ | u >= 1 = let ([boy1,boy2],mapO) = updateMap [0,2,0] [0,1,0]
+                val = (fromIntegral u -1)*boy1 + (rpc !! 1)*boy2
+                newM = M.insert hi val mapI
+            in (val,newM)
+
+ | v >= 1 = let ([boy1,boy2],mapO) = updateMap [0,0,2] [0,0,1]
+                val = (fromIntegral v -1)*boy1 + (rpc !! 2)*boy2
+                newM = M.insert hi val mapI
+            in (val,newM)
+
+ | otherwise =  let arg = (gamma*) . sum . (fmap (^2))  $ rpc
+                    x1 = (-2.0*gamma)^n
+                    val = x1 * boysF (fromIntegral n) arg
+                    newM = M.insert hi val mapI
+                in (val,newM)
+
+  where updateMap !xs !ys = runState (sequence [calcVal xs, calcVal ys]) mapI
+        calcVal xs = get >>= \st -> let key = sub xs
+                                        funAlternative = recursiveHI rpc gamma key st
+                                        (v,m) = boyMonplus funAlternative key st
+                                    in put m >> return v
+        n = getN hi -- order of the boy function
+        sub [a,b,c] = hi {getN = n + 1, getijt = [t-a,u-b,v-c]}
+        
+-- |Boys Function calculation using the monad plus        
+boyMonplus :: ([Int] -> (Double,MapHermite)) -> HermiteIndex-> MapHermite -> (Double,MapHermite)
+boyMonplus fun !key !m = fromMaybe err $ (lookupM key m) `mplus` (Just (res,newM))
+  where (res,oldmap) = fun (getijt key)
+        newM = M.insert key res oldmap
+        err = error "failure in the recursive Hermite Procedure" 
+ 
+lookupM :: Ord k => k -> M.Map k a -> Maybe (a , M.Map k a)
+lookupM !k !m = do 
+              val <- M.lookup k m
+              return (val,m)                                                             
+              
+{- we sent to listIndexes two Funtypes and the function return
+the exponent for x,y,z according to the l-number of the
+orbital that thos Funtypes represent
+therefore for ls = [l1,m1,n1,l2,m2,n2]-}
+
+listIndexes :: [Funtype] -> [Int]        
+listIndexes !shells = funtyp2Index <$> shells <*> [0..2]
+
+
+initilized_Seed_Coeff :: [Funtype] -> NucCoord -> Double -> HermiteStateCoeff        
+initilized_Seed_Coeff !shells !rab !mu = HermiteStateCoeff mapC0 listC
+  where mapC0 = DL.foldl' (\acc (k, v) -> M.insert k v acc) M.empty $ DL.zip k0 e0 
+        listC = genCoeff_Hermite shells
+        k0 = [Xpa [0, 0, 0], Ypa [0, 0, 0], Zpa [0, 0, 0]] 
+        e0 = DL.map (\x -> exp(-mu*(x^2))) rab
+        
+        
+genCoeff_Hermite :: [Funtype] -> [[HermiteIndex]]
+genCoeff_Hermite !shells = do
+  i <-[0..l1+l2]
+  j <-[0..m1+m2]
+  k <-[0..n1+n2]
+  return $ [Xpa [l1,l2,i], Ypa [m1,m2,j], Zpa [n1,n2,k]] 
+  where [l1,m1,n1,l2,m2,n2] = listIndexes shells
+
+
+initilized_Seed_Integral :: [Funtype] -> NucCoord -> Double -> CartesianDerivatives -> HermiteStateIntegral
+initilized_Seed_Integral !symbols !rpc !gamma !derv = HermiteStateIntegral mapI0 listI 
+  where mapI0 = M.insert k0' f0 M.empty
+        k0'= Rpa 0 [0, 0, 0] 
+        y= gamma*rpc2
+        f0 = boysF 0 y
+        rpc2 = sum $ DL.map (^2) rpc
+        listI = genCoeff_Integral symbols derv
+        
+                
+genCoeff_Integral :: [Funtype] -> CartesianDerivatives -> [HermiteIndex]
+genCoeff_Integral !symbols (Dij_Ax e, Dij_Ay f, Dij_Az g) =
+  do
+  t <-[0..l1+l2+e]
+  u <-[0..m1+m2+f]
+  v <-[0..n1+n2+g]
+  return $ Rpa 0 [t,u,v] 
+  where [l1,m1,n1,l2,m2,n2] = listIndexes symbols        
+
+-- ==============> Auxiliar Functions <===============
+
+
+--(2k -1) !! = (2k)!/(2^k * k!)
+-- i = 2k - 1 => k = (i + 1)/ 2
+-- | Odd factorial function
+facOdd ::Int -> Double
+facOdd !i | i `rem`2 == 0  = error "Factorial Odd function required an odd integer as input"
+          | otherwise  = case compare i 2 of
+                             LT -> 1
+                             GT-> let k = (1 + i) `div ` 2
+                                  in (fromIntegral $ fac (2*k)) /  (2.0^k * (fromIntegral $ fac k))
+
+-- | Factorial function
+fac :: Int -> Int
+fac !i | i < 0   = error "The factorial function is defined only for natural numbers"
+       | i == 0  = 1
+       | otherwise = product [i,i-1..1]
+
+
+
+binomial :: Int -> Int -> Double
+binomial !l !k = fromIntegral $ fac l `div` (fac k * fac (l-k))
+
+-- | Square internuclear distance function
+rab2 :: NucCoord -> NucCoord -> Double
+rab2 !a !b = sum . fmap (^2). DL.zipWith (-) a $ b
+
+-- | Mean point between two gaussians
+meanp ::(Exponent,Exponent) -> NucCoord -> NucCoord -> [Double]
+meanp (!e1,!e2) !ra !rb = fmap (\(a,b) -> (e1*a + e2*b)/(e1+e2)) $ DL.zip ra rb
+
+restVect :: (NucCoord,NucCoord) -> NucCoord
+restVect (!ra,!rb) = DL.zipWith (-) ra rb
+
+{- |The norm of each gaussian is given by the following equation
+    N = sqrt $ ((2l -1)!! (2m-1)!! (2n-1)!!)/(4*expo)^(l+m+n)  * (pi/(2*e))**1.5
+    where expo is the exponential factor of the GTO -}
+normaCoeff :: CGF -> CGF
+normaCoeff !b1 = b1 { getPrimitives = newPrimitives}
+  where xs = getPrimitives b1
+        newPrimitives = ((uncurry fun ) &&& (snd) ) `fmap` xs
+        fun = \c e -> (c/) . sqrt $ (ang e) * (pi/(2*e))**1.5
+        ang x = prod / (4*x)^(sum indexes)
+        prod = product $ fmap (\k -> facOdd (2*k -1)) indexes
+        shell = getfunTyp  b1
+        indexes = fmap (LA.map2val mapLAngular) $ DL.zip (repeat shell) [0..2]
+
+
+-- | Transform from the unary angular momentum representation to the corresponding integer value
+funtyp2Index :: Funtype -> Int -> Int
+funtyp2Index !funtyp !x =  fromMaybe (error " Unknown Label of the Basis" )
+                         $ M.lookup (funtyp,x) mapLAngular
+
+        
+
+
+
+
 
