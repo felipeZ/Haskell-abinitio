@@ -28,8 +28,10 @@ module HartreeFock (
      
 import Control.Applicative
 import Control.Arrow ((&&&))
+import Control.Exception (evaluate)
 import Control.Monad.List(guard)
 import Control.Monad (liftM,(<=<))
+import Control.Parallel.Strategies (parList,rdeepseq,using)
 import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix 
@@ -43,9 +45,10 @@ import Text.Printf
 import BasisOrthogonalization
 import Boys(boysF)
 import DIIS
+import EigenHmatrix (computeWithHP)
 import GlobalTypes
 import IntegralsEvaluation
-import Jacobi (jacobiP,testJacobi)
+import Jacobi (jacobiP,sortEigenV)
 import LinearAlgebra
 import Logger
 
@@ -65,14 +68,15 @@ import Logger
 scfHF ::  [AtomData] -> Charge -> (String -> IO ()) -> IO (HFData)
 scfHF atoms charge logger = do
         let repulsionN = nuclearRep atoms
-            occupied = floor . (/2) . (subtract charge) . sum $  fmap (getZnumber) atoms
-            dataDIIS = DataDIIS [] [] 5
+            occupied   = floor . (/2) . (subtract charge) . sum $  fmap (getZnumber) atoms
+            dataDIIS   = DataDIIS [] [] 5
         integrals <- calcIntegrals atoms
         core      <- hcore atoms
         s         <- mtxOverlap $ atoms
         xmatrix   <- symmOrtho <=< triang2DIM2 $ s
         density   <- harrisFunctional core xmatrix integrals occupied
-        scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 100 OFF logger
+        logger $ show integrals
+        scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 200 OFF logger
 
         
 -- | Driver to run the DIIS procedure        
@@ -114,7 +118,8 @@ scfDIIS !atoms !dataDIIS !core !oldDensity !overlapMtx !xmatrix !integrals
 
 -- ==========================> <===========================
 -- | Initial Density Guess Using the Harris Functional 
-harrisFunctional :: Monad m => FlattenCore -> TransformMatrix -> Integrals -> OccupiedShells -> m FlattenChargeDensity
+harrisFunctional :: FlattenCore -> TransformMatrix -> Integrals -> OccupiedShells -> IO FlattenChargeDensity
+-- harrisFunctional :: Monad m => FlattenCore -> TransformMatrix -> Integrals -> OccupiedShells -> m FlattenChargeDensity
 harrisFunctional !fcore !xmatrix !integrals !occupied = do
   let (Z :. dim) = extent fcore
   guess <- computeGuessIntegrals integrals occupied dim
@@ -154,7 +159,7 @@ sortKeys [i,j,k,l] = let l1 =DL.sort [i,j]
 calcIntegrals :: Monad m => [AtomData] -> m (Array U DIM1 Double)
 calcIntegrals !atoms = evalIntbykeyStrat atoms cartProd
   where dim = pred . sum . fmap (length . getBasis) $ atoms
-        cartProd = do
+        cartProd = (flip using) (parList rdeepseq) $ do
           i <- [0..dim]
           j <- [i..dim]
           k <- [i..dim]
@@ -220,6 +225,7 @@ calcGmatrix !atoms !density !integrals =
         nshells = dimTriang flat
 {-# INLINE calcGmatrix #-}
         
+        
 -- | Auxiliar function to slice the integrals vector
 sliceIntegrals :: [AtomData]
              -> Array U DIM1 Double
@@ -229,8 +235,8 @@ sliceIntegrals :: [AtomData]
 sliceIntegrals !atoms !integrals (!i,!l) !nshells = 
   R.fromFunction (Z:.nshells)
      (\(Z:. k) ->
-       let flat1 = calcIndex [a,b,k,l]
-           flat2 = calcIndex [a,l,k,b]
+       let flat1    = calcIndex [a,b,k,l]
+           flat2    = calcIndex [a,l,k,b]
            coulomb  = integrals ! (Z:.flat1)
            exchange = integrals ! (Z:.flat2)
        in coulomb - 0.5* exchange)
@@ -245,10 +251,10 @@ diagonalHF :: Monad m => FlattenFock ->
                          OccupiedShells ->
                          m (MOCoefficients,FlattenChargeDensity,EigenValues)
 diagonalHF !fock1 !xmatrix !occupied = do
-        fDIM2 <- unitaryTransf xmatrix fock1
-        (orbEs,coeff) <- jacobiP fDIM2
-        newCoeff <- mmultP xmatrix coeff
-        newDensity <- calcDensity newCoeff occupied
+        fDIM2         <- unitaryTransf xmatrix fock1
+        (orbEs,coeff) <- jacobiP fDIM2 -- sortEigenV =<< computeWithHP fDIM2
+        newCoeff      <- mmultP xmatrix coeff
+        newDensity    <- calcDensity newCoeff occupied
         return $ (newCoeff, newDensity, orbEs)
                            
                   

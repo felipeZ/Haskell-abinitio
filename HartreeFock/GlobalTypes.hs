@@ -139,8 +139,17 @@ newtype Recursive a = Recursive {runRecursive :: a -> a}
 
 
 -- =================> Defaults <======================
--- hfDataDefault :: HFData
--- hfDataDefault HFData 
+zeroVec :: VecUnbox
+zeroVec = VU.empty
+
+zeroFlatten :: Array U DIM1 Double 
+zeroFlatten = R.fromListUnboxed  (ix1 1) [0]  
+
+zeroMatrix :: Matrix
+zeroMatrix = R.fromListUnboxed  (ix2 1 1) [0]  
+
+hfDataDefault :: HFData
+hfDataDefault = HFData zeroFlatten zeroMatrix zeroFlatten zeroVec 0
 
  -- =================> INSTANCES <===================
  

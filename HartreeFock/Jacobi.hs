@@ -4,6 +4,7 @@ module Jacobi (
                Matrix,
                VecUnbox,
                jacobiP,
+               sortEigenV,
                testJacobi
               ) where
 
