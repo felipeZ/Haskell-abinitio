@@ -37,7 +37,7 @@ import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix 
 import qualified Data.List as DL
 import qualified Data.Map as M
-import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Unboxed as U
 import Text.Printf
 
 
@@ -70,7 +70,7 @@ scfHF atoms charge logger = do
         let repulsionN = nuclearRep atoms
             occupied   = floor . (/2) . (subtract charge) . sum $  fmap (getZnumber) atoms
             dataDIIS   = DataDIIS [] [] 5
-        integrals <- calcIntegrals atoms
+            integrals  = calcIntegrals atoms
         core      <- hcore atoms
         s         <- mtxOverlap $ atoms
         xmatrix   <- symmOrtho <=< triang2DIM2 $ s
@@ -156,7 +156,7 @@ sortKeys [i,j,k,l] = let l1 =DL.sort [i,j]
                      in if l1 <=l2 then l1 DL.++ l2 else l2 DL.++ l1
                                               
 -- | Compute the electronic integrals                                 
-calcIntegrals :: Monad m => [AtomData] -> m (Array U DIM1 Double)
+calcIntegrals :: [AtomData] -> Array U DIM1 Double
 calcIntegrals !atoms = evalIntbykeyStrat atoms cartProd
   where dim = pred . sum . fmap (length . getBasis) $ atoms
         cartProd = (flip using) (parList rdeepseq) $ do
@@ -165,7 +165,7 @@ calcIntegrals !atoms = evalIntbykeyStrat atoms cartProd
           k <- [i..dim]
           l <- [k..dim]
           let xs = [i,j,k,l]
-          guard (condition xs)
+          guard  $ condition xs
           return $ [i,j,k,l]
         condition = \e -> case compare e $ sortKeys e of
                                EQ -> True
@@ -280,7 +280,7 @@ nuclearRep :: [AtomData] -> Double
 nuclearRep xs = sum [repulsion atomi atomj | atomi <- xs, atomj <- xs, atomj > atomi]
   where dim = pred . length $ xs
         repulsion at1 at2 = let ([za,zb],[ra,rb]) = fmap getZnumber &&& (fmap getCoord) $ [at1,at2]
-                                rab = sqrt . sum . fmap (^2) $ DL.zipWith (-) ra rb
+                                rab = sqrt . U.sum . U.map (^2) $ vecSub ra rb
                             in za*zb/rab
 
 

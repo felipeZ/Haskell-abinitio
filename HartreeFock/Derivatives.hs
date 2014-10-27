@@ -18,7 +18,7 @@ import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix
 import qualified Data.List as DL
-import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Unboxed as U
 
 -- =========> Internal Modules <=========
 import GlobalTypes   as G
@@ -231,11 +231,11 @@ firstNuclearDerivative atoms =
                      atomB <- atoms
                      guard $ atomB /= atomA                     
                      let (zb,rb) = getZnumber &&& getCoord $ atomB
-                         rab = DL.zipWith (-) ra rb
-                         rab_mod = sqrt . sum . fmap (^2) $ rab
+                         rab = vecSub ra rb
+                         rab_mod = sqrt . U.sum . U.map (^2) $ rab
                          rab3 = rab_mod^3
                          cte = za*zb/rab3
-                     return $!!  cte * (rab !! j)
+                     return $!!  cte * (rab U.! j)
 
   where  numat = length atoms                                                      
          totalDIM = 3 * numat                                                      

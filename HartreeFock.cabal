@@ -49,7 +49,9 @@ Library
     parsec,
     repa,
     repa-algorithms,
-    vector    
+    vector,
+    vector-strategies    
+  
   hs-source-dirs: HartreeFock
   other-modules: BasisOrthogonalization, Boys, DIIS, EigenHmatrix, GaussElimination, GlobalTypes, IntegralsEvaluation, Jacobi
   exposed-modules: Derivatives, HartreeFock, LinearAlgebra, Logger

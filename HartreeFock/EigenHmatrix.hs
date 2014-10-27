@@ -19,7 +19,7 @@ import Numeric.LinearAlgebra (eigSH')
  -- =========> Internal Modules <=======
 
 
-import GlobalTypes (VecUnbox,Matrix)
+import GlobalTypes (VecUnboxD,Matrix)
 
 
 -- =========================> <===================================
@@ -27,14 +27,14 @@ import GlobalTypes (VecUnbox,Matrix)
 -- | Resolve the EigenValue problem using Hmatrix and return a Data
 --   containing the EigenVectors as a Repa Array and the EigenValues
 --   as a Vector Unboxed
-computeWithHS :: Array U DIM2 Double -> (VecUnbox,Matrix)
+computeWithHS :: Array U DIM2 Double -> (VecUnboxD,Matrix)
 computeWithHS x = let 
         solutions = eigSH' $ repaToMatrix $ computeVectorS $ delay x
         vect      = toUnboxed . computeUnboxedS . delay . vectorToRepa $ fst solutions
         matr      = computeUnboxedS . delay . matrixToRepa $ snd solutions
         in (vect,matr)
 
-computeWithHP :: Monad m => Array U DIM2 Double -> m  (VecUnbox,Matrix) 
+computeWithHP :: Monad m => Array U DIM2 Double -> m  (VecUnboxD,Matrix) 
 computeWithHP x = do
         prova <- computeVectorP $ delay x
         let solutions = eigSH' $ repaToMatrix prova

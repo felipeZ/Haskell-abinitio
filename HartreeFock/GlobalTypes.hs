@@ -1,4 +1,4 @@
-{-# Language DeriveFunctor #-}
+{-# Language DeriveFunctor,GADTs #-}
 
 -- The HaskellFock SCF Project
 -- @2013 Felipe Zapata, Angel Alvarez
@@ -8,13 +8,14 @@ module GlobalTypes where
 
 import Control.Applicative
 import Control.DeepSeq
-import Data.Array.Repa          as R
+import Data.Array.Repa         as R
 import qualified Data.Foldable as DF
-import qualified Data.Map as M
+import qualified Data.Map      as M
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..),Sum(..),mappend,mconcat,mempty)
-import qualified Data.Traversable as DT
-import qualified Data.Vector.Unboxed as VU
+import qualified Data.Traversable    as DT
+import qualified Data.Vector         as V
+import qualified Data.Vector.Unboxed as U
 
 --  =========================> TYPES <=====================
                
@@ -28,7 +29,7 @@ type Charge = Double
 type Coeff = [Double]
 
 -- | EigenValues are represented as an unboxed Vector
-type EigenValues = VU.Vector Double
+type EigenValues = U.Vector Double
 
 -- | EigenVectors are represented as a DIM2 Repa Array
 type EigenVectors = Array U DIM2 Double
@@ -47,14 +48,13 @@ type Matrix = Array U DIM2 Double
 type Nelec = Int
 
 -- | Nuclear Coordinates
-type NucCoord = [Double]
+type NucCoord = VecUnboxD
 
 -- | Nuclei-Nuclei Energy repulsion
 type NuclearRepulsion = Double
 
  --  | Occupation number
 type OccupiedShells   = Int
-
 
 -- | Iteration Step
 type Step = Int
@@ -65,7 +65,9 @@ type Tolerance = Double
 type Threshold = Double
 
 -- | Vector Unboxed
-type VecUnbox  = VU.Vector Double
+type VecUnboxD = U.Vector Double
+
+type VecUnboxI = U.Vector Int
 
 -- | Atomic Number
 type ZNumber = Double
@@ -94,9 +96,16 @@ data CartesianLabel = Ax | Ay | Az deriving (Show,Eq)
 
 -- | Contracted Gaussian function
 data CGF = CGF  {
-                getPrimitives ::[GaussPrimitive] -- ^ List of primitives
-               ,getfunTyp ::Funtype              -- ^ angular momentum
+                getPrimitives :: ![GaussPrimitive] -- ^ List of primitives
+               ,getfunTyp     :: !Funtype          -- ^ angular momentum
                 } deriving (Show,Eq,Ord)
+
+-- data CGFV = CGFV  {
+--                 getPrimitivesV :: V.Vector GaussPrimitive -- ^ array of primitives
+--                ,getfunTypV     ::Funtype                  -- ^ angular momentum
+--                 } deriving (Show,Eq,Ord)
+ 
+
 
 data Derivatives a = Dij_Ax a | Dij_Ay a | Dij_Az a deriving (Show,Functor)
 
@@ -133,15 +142,21 @@ data Choice a = Ignore | Take a  deriving (Show,Functor)
 
 data Switch = ON | OFF
 
+data Vec2D a = Vec2D !a !a deriving (Eq,Ord,Show)
+
+data Vec3D a = Vec3D !a !a !a deriving (Eq,Ord,Show)
+
+data Vec4D a = Vec4D !a !a !a !a deriving (Eq,Ord,Show)
+
 -- ================> NEWTYPES <========================
 
 newtype Recursive a = Recursive {runRecursive :: a -> a} 
 
 
 -- =================> Defaults <======================
-zeroVec :: VecUnbox
-zeroVec = VU.empty
-
+zeroVec :: VecUnboxD
+zeroVec = U.empty
+g
 zeroFlatten :: Array U DIM1 Double 
 zeroFlatten = R.fromListUnboxed  (ix1 1) [0]  
 
@@ -201,7 +216,24 @@ choices x0 f c =
   case c of
        Ignore -> x0
        Take x -> f x
-       
+
+-- ===================> Vector Unboxed <==============
+-- TODO use template Haskell to declare these functions
+vecSub ::(Num a, U.Unbox a) => U.Vector a -> U.Vector a -> U.Vector a
+vecSub  ra rb = U.zipWith (-) ra rb
+
+toVec2D :: U.Unbox a => U.Vector a -> Vec2D a
+toVec2D vu = Vec2D (vu U.! 0) (vu U.! 1)
+
+toVec3D :: U.Unbox a => U.Vector a -> Vec3D a
+toVec3D vu = Vec3D (vu U.! 0) (vu U.! 1) (vu U.! 2)
+
+toVec4D :: U.Unbox a => U.Vector a -> Vec4D a
+toVec4D vu = Vec4D (vu U.! 0) (vu U.! 1) (vu U.! 2) (vu U.! 3)  
+
+vecSum3D :: Num a => Vec3D a -> Vec3D a -> Vec3D a
+vecSum3D  (Vec3D a b c) (Vec3D x y z) = Vec3D (a+x) (b+y) (c+z) 
+
 -- ====================> Operators <=======================
 
 
