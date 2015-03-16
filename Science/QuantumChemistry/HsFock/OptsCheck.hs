@@ -3,7 +3,7 @@
 -- @2012,2013 Angel Alvarez Adhesive tape
 -- @2012,2013 Felipe Zapata core SCF machinery 
 
-module OptsCheck where
+module Science.QuantumChemistry.HsFock.OptsCheck where
 
 -- Main module needed imports
 import Control.Monad(foldM,liftM,ap)
@@ -18,9 +18,10 @@ import System.Console.GetOpt
 import System.Directory ( doesDirectoryExist, doesFileExist )
 import System.FilePath
 
+-- Internal Modules
+import Science.QuantumChemistry.HsFock.Options
 
-import Options
-
+-- -----------> Data Types <---------------------
 
 -- An EitherT container to store parsed opts from commandline or error messages
 type OptsResult = EitherT String IO Options

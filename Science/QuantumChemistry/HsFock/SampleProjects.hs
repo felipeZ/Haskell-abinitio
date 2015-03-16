@@ -4,10 +4,10 @@
 -- Sample Data to Felipe
 
 
-module SampleProjects where
+module Science.QuantumChemistry.HsFock.SampleProjects where
 
-import HartreeFock
-import Project
+import Science.QuantumChemistry.HartreeFock.HartreeFock
+import Science.QuantumChemistry.HsFock.Project
 
 
 

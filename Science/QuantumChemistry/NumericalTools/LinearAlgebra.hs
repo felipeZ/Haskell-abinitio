@@ -4,13 +4,12 @@
 -- @2013 Felipe Zapata, Angel Alvarez
 -- Linear Algebra General Utilities
 
-module LinearAlgebra ( 
+module  Science.QuantumChemistry.NumericalTools.LinearAlgebra ( 
        EigenValues
       ,EigenVectors
       ,EigenData(..)
       ,calcCoordCGF
       ,calcIndexShell
-      ,diagonal       
       ,dimTriang
       ,dotMatrix
       ,flattenZero
@@ -39,7 +38,6 @@ module LinearAlgebra (
       ,zero
       ) where
 
--- ########## MODULE FOR IMPLENTING LinearAlgebra Tools #################
 
 
 import Data.List (lookup, tails, transpose, zip5)
@@ -48,20 +46,21 @@ import qualified Data.Vector.Unboxed as VU
 import qualified Data.Map as M
 import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
-import Data.Array.Repa.Algorithms.Matrix
-import Control.Monad(ap,liftM,mplus)
+import Data.Array.Repa.Algorithms.Matrix as R
+import Control.Monad(ap,mplus)
 
--- Internal imports
-import GlobalTypes
+-- ============> Internal imports <==============
+import Science.QuantumChemistry.GlobalTypes
 
 -- ========================> DATA TYPES <===================
-type DIM       = Int
-type Indx      = (Int,Int)
+type DIM = Int
+type Indx = (Int,Int)
+type Tolerance = Double
+type Step = Int
 
--- ==============> SIMMETRIC MATRIX MULTIPLICATION <===============
 
 -- |The dot product between two matrices
-dotMatrix :: Matrix -> Matrix -> Double
+dotMatrix :: Array U DIM2 Double -> Array U DIM2 Double -> Double
 dotMatrix mtx1 mtx2 = sumAllS. computeUnboxedS $ fromFunction (Z:.dim^2) $
                       \(Z:. i) ->  let x = v1 ! (Z:.i)
                                        y = v2 ! (Z:.i)
@@ -72,9 +71,11 @@ dotMatrix mtx1 mtx2 = sumAllS. computeUnboxedS $ fromFunction (Z:.dim^2) $
         v2 = computeUnboxedS $ reshape (Z:. dim^2) mtx2
 {-# INLINE dotMatrix #-}
 
+        
+-- ==============> SIMMETRIC MATRIX MULTIPLICATION <===============
 
 -- |Parallel multiplication of two flatten matrices
-mmultFlattenP :: Monad m => Array U DIM1 Double -> Array U DIM1 Double -> m (Matrix)
+mmultFlattenP :: Monad m => Array U DIM1 Double -> Array U DIM1 Double -> m (Array U DIM2 Double)
 mmultFlattenP !arr !brr =
    do   computeUnboxedP
          $ fromFunction (Z :. dim :. dim)
@@ -88,7 +89,7 @@ mmultFlattenP !arr !brr =
 {-# NOINLINE mmultFlattenP #-}
 
 -- |Sequential multiplication of two flatten matrices
-mmultFlattenS :: Array U DIM1 Double -> Array U DIM1 Double -> Matrix
+mmultFlattenS :: Array U DIM1 Double -> Array U DIM1 Double -> Array U DIM2 Double
 mmultFlattenS !arr !brr =
    do   computeUnboxedS
          $ fromFunction (Z :. dim :. dim)
@@ -102,7 +103,7 @@ mmultFlattenS !arr !brr =
 {-# NOINLINE mmultFlattenS #-}   
 
 -- | Parallel Square-upper traingular matrices multiplication
-mmultDIM2FlattenP :: Monad m => Matrix -> Array U DIM1 Double -> m (Matrix)
+mmultDIM2FlattenP :: Monad m => Array U DIM2 Double -> Array U DIM1 Double -> m (Array U DIM2 Double)
 mmultDIM2FlattenP !arr !flat =
    do   computeUnboxedP
          $ fromFunction (Z :. dim :. dim)
@@ -115,7 +116,7 @@ mmultDIM2FlattenP !arr !flat =
 {-# NOINLINE mmultDIM2FlattenP #-}
 
 -- | Parallel upper traingular-square matrices multiplication
-mmultFlattenDIM2P :: Monad m => Array U DIM1 Double -> Matrix -> m Matrix
+mmultFlattenDIM2P :: Monad m => Array U DIM1 Double -> Array U DIM2 Double -> m (Array U DIM2 Double)
 mmultFlattenDIM2P !flat !brr = do
    trr <- transpose2P brr
    computeP
@@ -143,17 +144,9 @@ scalarxMtx !arr !s = R.computeUnboxedS $ R.unsafeTraverse arr id (\f sh -> s * f
 {-# INLINE scalarxMtx #-}
 
 
--- =================> Slice <========
-diagonal :: Monad m => Matrix -> m VecUnbox
-diagonal mtx = liftM toUnboxed  $ computeUnboxedP $ unsafeBackpermute (ix1 dim) (\(Z:.i) -> ix2 i i) mtx
-
-  where (Z:. dim :._) = extent mtx
-
-
-
 -- ============> Hartree -Fock Linear Algebra <=========
 -- | Transform the given matrix into the orthogonal basis
-unitaryTransf :: Monad m => TransformMatrix -> Array U DIM1 Double -> m(Matrix)
+unitaryTransf :: Monad m => TransformMatrix -> Array U DIM1 Double -> m(Array U DIM2 Double)
 unitaryTransf !orthoMtx !mtx = do
                    transp <- transpose2P orthoMtx
                    prod1 <- mmultDIM2FlattenP transp mtx
@@ -164,13 +157,12 @@ unitaryTransf !orthoMtx !mtx = do
 -- ==============> FUNCTIONS FOR GENERATING REPA ARRAYS <=====================
 
 -- Identity matrix
-identity ::  DIM2 -> Matrix
-identity sh = computeUnboxedS $ fromFunction sh $
-  \(Z:. x:. y) -> if x==y then 1 else 0
-        
+identity :: VU.Unbox Double  => Int -> Array U DIM2 Double
+identity dim =  list2ArrDIM2 dim [dij i j | i <- [1..dim], j <- [1..dim]]
+  where dij u v = if u == v then 1.0 else 0.0
   
 -- zero matrix  
-zero :: Int -> Matrix
+zero :: Int -> Array U DIM2 Double
 zero dim = R.computeUnboxedS $ R.fromFunction (Z:. dim:. dim)
            $ (\sh -> 0.0)
 
@@ -186,14 +178,14 @@ list2ArrDIM2 dim !list = R.fromListUnboxed (Z:. dim :. dim :: DIM2) list
 list2ArrDIM1 ::VU.Unbox a => Int -> [a] -> Array U DIM1 a
 list2ArrDIM1 dim !list = R.fromListUnboxed (Z:. dim :: DIM1) list
         
-vec2Diagonal :: Array U DIM1 Double -> Matrix
+vec2Diagonal :: Array U DIM1 Double -> Array U DIM2 Double
 vec2Diagonal vec = computeUnboxedS $ fromFunction (Z:.dim :. dim)
    (\(Z:. i:. j) -> case i == j of
                          True -> vec ! (Z:. i)
                          False -> 0.0)
 
   where (Z:.dim) = R.extent vec
-        
+
 
 -- ===================> Triangular Matrices <====================
 
@@ -226,7 +218,7 @@ triang2DIM2S ar = R.computeUnboxedS $ R.fromFunction (Z:.dim :. dim)
         dim = dimTriang $ len
         
 -- | Symmetric square matrix to flatten triangular matrix        
-toTriang :: Monad m => Matrix -> m (Array U DIM1 Double)
+toTriang :: Monad m => Array U DIM2 Double -> m (Array U DIM1 Double)
 toTriang arr = R.computeUnboxedP $ R.fromFunction (Z:. triang)
               (\(Z:. i) ->
               let (x,y) = indexFlat2DIM2 dim i
@@ -236,11 +228,9 @@ toTriang arr = R.computeUnboxedP $ R.fromFunction (Z:. triang)
         triang = sum [dim,pred dim .. 1]
 
 -- |Trace of a Matrix        
-trace :: Matrix -> Double
-trace arr = sumAllS  $ (R.computeUnboxedS $ R.fromFunction (Z:. dim) $
-                               \(Z:.i) -> arr ! (Z:. i :. i))
+trace :: Array U DIM2 Double -> Double
+trace = trace2S
 
-  where (Z:. dim :. _) = extent arr
                                
 vector2Matrix :: Int -> [a] -> [[a]]
 vector2Matrix !n !list = [fmap (\i -> list !! (xs+i) ) [0..pred n] | xs <- xss]
@@ -311,11 +301,10 @@ map2val mapa key = case M.lookup key mapa of
 calcCoordCGF :: [AtomData] -> Int -> (NucCoord,CGF)
 calcCoordCGF atoms i = fun 0 atoms
   where fun !acc (x:xs) =
-              let basis = getBasis x
-                  r   =  getCoord x
-                  nb = length basis
+              let nb = length . getBasis $ x
                   newAcc = nb + acc
-                  cgf = basis !! (i-acc)                  
+                  cgf = (getBasis x) !! (i-acc)
+                  r   =  getCoord x
               in  if i < newAcc then (r,cgf) else fun newAcc xs
         fun _ [] = error "there is not such atom"        
 

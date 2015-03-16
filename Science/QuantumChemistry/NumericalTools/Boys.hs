@@ -37,11 +37,12 @@
 --         m = 45.0        x = 6.4e-5      Eq(3) = 1.09883228385254e-2     Eq(6) = 1.09883228385254e-2     ours = 1.098832283873514e-2
 --         m = 100.0       x = 2.6e-7      Eq(3) = 4.97512309732144e-3     Eq(6) = 4.97512309732144e-3     ours = 4.975123097321828e-3
 
-module Boys where
+module Science.QuantumChemistry.NumericalTools.Boys where
 
 import Data.Number.Erf
 import Math.Gamma
 import Math.GaussianQuadratureIntegration as GQI
+
 
 
 -- Boys function
@@ -50,9 +51,7 @@ boysF 0 x
     | x > 0.0e-5 = 0.5 * sqrt (pi/x) * erf (sqrt x)
     | otherwise  = 1.0
 
-boysF n 0 = recip $ 2*n + 1
-
-boysF n x = k / d                                     
+boysF n x = k / d
     where
         k = kummer a b z 0.1 -- Kummer 1F1
         a = n + 0.5
@@ -60,14 +59,13 @@ boysF n x = k / d
         z = -x
         d = (2 * n) + 1
 
-
 -- Boys function Upward Recurrence as stated on [2]
 -- boysF2 0 x = 
 -- boysF2 m x = a * b
 --     where
 --         a = 1 / ( 2*x )
 --         b = (2*m - 1) * boysF2 (m-1) x - (e ** (-x))
---         e = exp 1
+        e = exp 1
 -- Bous function backward recurrence as stated on [2]
 -- boysF3 = bF
 --     where

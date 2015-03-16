@@ -4,7 +4,7 @@
 -- @2012,2013 Angel Alvarez Adhesive tape
 -- @2012,2013 Felipe Zapata core SCF machinery 
 
-module Options where
+module Science.QuantumChemistry.HsFock.Options where
 
 import Text.Show.Functions
 

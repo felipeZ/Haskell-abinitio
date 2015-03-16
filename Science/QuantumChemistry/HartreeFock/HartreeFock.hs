@@ -1,4 +1,3 @@
-
 {-# Language FlexibleContexts,BangPatterns #-}
 
 -- The HaskellFock SCF Project 
@@ -16,7 +15,7 @@
 -- Szabo, A. and N. S. Ostlund (1996). Modern Quantum Chemistry. Toronto, Canada, Dover Publications.
 
 -- | Restricted Hartree-Fock Method
-module HartreeFock (
+module Science.QuantumChemistry.HartreeFock.HartreeFock (
       module GlobalTypes
      ,module IntegralsEvaluation
      ,HFData(..)
@@ -28,34 +27,31 @@ module HartreeFock (
      
 import Control.Applicative
 import Control.Arrow ((&&&))
-import Control.Exception (evaluate)
 import Control.Monad.List(guard)
 import Control.Monad (liftM,(<=<))
-import Control.Parallel.Strategies (parList,rdeepseq,using)
-import Data.Array.Repa          as R
+import Data.Array.Repa         as R
 import Data.Array.Repa.Unsafe  as R
-import Data.Array.Repa.Algorithms.Matrix 
+import Data.Array.Repa.Algorithms.Matrix as R
 import qualified Data.List as DL
 import qualified Data.Map as M
-import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Unboxed as VU
 import Text.Printf
 
 
 -- internal Modules
-import BasisOrthogonalization
-import Boys(boysF)
-import DIIS
-import EigenHmatrix (computeWithHP)
-import GlobalTypes
-import IntegralsEvaluation
-import Jacobi (jacobiP,sortEigenV)
-import LinearAlgebra
-import Logger
+import Science.QuantumChemistry.HartreeFock.BasisOrthogonalization
+import Science.QuantumChemistry.NumericalTools.Boys(boysF)
+import Science.QuantumChemistry.HartreeFock.DIIS
+import Science.QuantumChemistry.GlobalTypes
+import Science.QuantumChemistry.HartreeFock.IntegralsEvaluation
+import Science.QuantumChemistry.NumericalTools.JacobiMethod (jacobiP)
+import Science.QuantumChemistry.NumericalTools.LinearAlgebra
+import Science.QuantumChemistry.ConcurrentTools.Logger
 
 
 -- ===============> MODULE HARTREE-FOCK <========================================
 
--- |The Matricial Elements are calculated in the IntegralsEvaluation with these elements are build unboxed vector which
+-- |The Matricial Elements are calculated in the IntegralsEvaluation with these elements are build unboxed vector wihch
 --  are subsequently transformed to Repa Arrays
                   
 --  ==================> LOCAL TYPES  <======================
@@ -68,15 +64,16 @@ import Logger
 scfHF ::  [AtomData] -> Charge -> (String -> IO ()) -> IO (HFData)
 scfHF atoms charge logger = do
         let repulsionN = nuclearRep atoms
-            occupied   = floor . (/2) . (subtract charge) . sum $  fmap (getZnumber) atoms
-            dataDIIS   = DataDIIS [] [] 5
-            integrals  = calcIntegrals atoms
-        core      <- hcore atoms
-        s         <- mtxOverlap $ atoms
-        xmatrix   <- symmOrtho <=< triang2DIM2 $ s
-        density   <- harrisFunctional core xmatrix integrals occupied
-        logger $ show integrals
-        scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 200 OFF logger
+            occupied = floor . (/2) . (subtract charge) . sum $  fmap (getZnumber) atoms
+            dataDIIS = DataDIIS [] [] 5
+        integrals <- calcIntegrals atoms
+        core <- hcore atoms
+        s <- mtxOverlap $ atoms
+        xmatrix <- symmOrtho <=< triang2DIM2 $ s
+        eig <- jacobiP <=< triang2DIM2 $ s
+        density <- harrisFunctional core xmatrix integrals occupied
+        logger $ show eig
+        scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 100 OFF logger
 
         
 -- | Driver to run the DIIS procedure        
@@ -118,8 +115,7 @@ scfDIIS !atoms !dataDIIS !core !oldDensity !overlapMtx !xmatrix !integrals
 
 -- ==========================> <===========================
 -- | Initial Density Guess Using the Harris Functional 
-harrisFunctional :: FlattenCore -> TransformMatrix -> Integrals -> OccupiedShells -> IO FlattenChargeDensity
--- harrisFunctional :: Monad m => FlattenCore -> TransformMatrix -> Integrals -> OccupiedShells -> m FlattenChargeDensity
+harrisFunctional :: Monad m => FlattenCore -> TransformMatrix -> Integrals -> OccupiedShells -> m FlattenChargeDensity
 harrisFunctional !fcore !xmatrix !integrals !occupied = do
   let (Z :. dim) = extent fcore
   guess <- computeGuessIntegrals integrals occupied dim
@@ -156,16 +152,16 @@ sortKeys [i,j,k,l] = let l1 =DL.sort [i,j]
                      in if l1 <=l2 then l1 DL.++ l2 else l2 DL.++ l1
                                               
 -- | Compute the electronic integrals                                 
-calcIntegrals :: [AtomData] -> Array U DIM1 Double
-calcIntegrals !atoms = evalIntbykeyStrat atoms cartProd
+calcIntegrals :: Monad m => [AtomData] -> m (Array U DIM1 Double)
+calcIntegrals !atoms = evalIntbykey atoms cartProd
   where dim = pred . sum . fmap (length . getBasis) $ atoms
-        cartProd = (flip using) (parList rdeepseq) $ do
+        cartProd = do
           i <- [0..dim]
           j <- [i..dim]
           k <- [i..dim]
           l <- [k..dim]
           let xs = [i,j,k,l]
-          guard  $ condition xs
+          guard (condition xs)
           return $ [i,j,k,l]
         condition = \e -> case compare e $ sortKeys e of
                                EQ -> True
@@ -177,7 +173,7 @@ calcIntegrals !atoms = evalIntbykeyStrat atoms cartProd
      molecular orbitals in order to  build up the density matrix
      Notice that we are assuming a double ocupation in each Shell, therefore
     this matrix differs from the monoelectronic density matrix -}                   
-calcDensity :: Monad m => Matrix-> OccupiedShells -> m FlattenChargeDensity
+calcDensity :: Monad m => Array U DIM2 Double -> OccupiedShells -> m FlattenChargeDensity
 calcDensity !arr !occupied =
    do   let (Z :. dim  :. _)  = extent arr
             flat = (dim^2 + dim)`div`2
@@ -225,7 +221,6 @@ calcGmatrix !atoms !density !integrals =
         nshells = dimTriang flat
 {-# INLINE calcGmatrix #-}
         
-        
 -- | Auxiliar function to slice the integrals vector
 sliceIntegrals :: [AtomData]
              -> Array U DIM1 Double
@@ -235,8 +230,8 @@ sliceIntegrals :: [AtomData]
 sliceIntegrals !atoms !integrals (!i,!l) !nshells = 
   R.fromFunction (Z:.nshells)
      (\(Z:. k) ->
-       let flat1    = calcIndex [a,b,k,l]
-           flat2    = calcIndex [a,l,k,b]
+       let flat1 = calcIndex [a,b,k,l]
+           flat2 = calcIndex [a,l,k,b]
            coulomb  = integrals ! (Z:.flat1)
            exchange = integrals ! (Z:.flat2)
        in coulomb - 0.5* exchange)
@@ -251,17 +246,19 @@ diagonalHF :: Monad m => FlattenFock ->
                          OccupiedShells ->
                          m (MOCoefficients,FlattenChargeDensity,EigenValues)
 diagonalHF !fock1 !xmatrix !occupied = do
-        fDIM2         <- unitaryTransf xmatrix fock1
-        (orbEs,coeff) <- jacobiP fDIM2 -- sortEigenV =<< computeWithHP fDIM2
-        newCoeff      <- mmultP xmatrix coeff
-        newDensity    <- calcDensity newCoeff occupied
+        fDIM2 <- unitaryTransf xmatrix fock1
+        eigData <- jacobiP fDIM2
+        let (coeff,orbEs) = eigenvec &&& eigenvals $ eigData
+        newCoeff <- mmultP xmatrix coeff
+        newDensity <- calcDensity newCoeff occupied
         return $ (newCoeff, newDensity, orbEs)
-                           
+        
+                   
                   
--- | Har tree-Fock total energy
+-- | Hartree-Fock total energy
 variationalE ::Monad m => FlattenCore -> FlattenFock -> FlattenChargeDensity  -> m Double
 variationalE !core !fockMtx !oldDensity = do
-  sumHF  <- computeUnboxedP $ core +^ fockMtx
+  sumHF <- R.computeUnboxedP $ core +^ fockMtx
   result <- mmultFlattenP oldDensity sumHF
   return $ 0.5 * (trace result)
 {-# INLINE variationalE #-}
@@ -269,7 +266,7 @@ variationalE !core !fockMtx !oldDensity = do
 -- | Function to check convergency
 converge :: FlattenChargeDensity -> FlattenChargeDensity -> Bool
 converge !oldDensity !newDensity  = if sigma < 1.0e-6 then True else False
-  where sigma = sqrt . (0.25*) . sumAllS . computeUnboxedS . R.map (^2) $ oldDensity -^ newDensity
+  where sigma = sqrt . (0.25*) . R.sumAllS . R.computeUnboxedS . R.map (^2) $ oldDensity -^ newDensity
 {-# INLINE converge #-}
   
 
@@ -280,7 +277,7 @@ nuclearRep :: [AtomData] -> Double
 nuclearRep xs = sum [repulsion atomi atomj | atomi <- xs, atomj <- xs, atomj > atomi]
   where dim = pred . length $ xs
         repulsion at1 at2 = let ([za,zb],[ra,rb]) = fmap getZnumber &&& (fmap getCoord) $ [at1,at2]
-                                rab = sqrt . U.sum . U.map (^2) $ vecSub ra rb
+                                rab = sqrt . sum . fmap (^2) $ DL.zipWith (-) ra rb
                             in za*zb/rab
 
 

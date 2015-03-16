@@ -4,9 +4,8 @@
 -- @2013 Felipe Zapata, Angel Alvarez
 -- Energy Gradient and Hessian (be patient for the last one)
 
-module Derivatives  (
-                     energyGradient
-                    ,checknonZeroDerivative
+module Science.QuantumChemistry.HartreeFock.Derivatives  (
+                    energyGradient
                     ) where
 
 import Control.Applicative
@@ -16,14 +15,14 @@ import Control.Monad ((<=<),(>=>))
 import Control.Monad.List (guard)
 import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
-import Data.Array.Repa.Algorithms.Matrix
+import Data.Array.Repa.Algorithms.Matrix as R
 import qualified Data.List as DL
-import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Unboxed as VU
 
 -- =========> Internal Modules <=========
-import GlobalTypes   as G
-import LinearAlgebra as LA
-import HartreeFock
+import Science.QuantumChemistry.GlobalTypes as G
+import Science.QuantumChemistry.NumericalTools.LinearAlgebra as LA
+import Science.QuantumChemistry.HartreeFock.HartreeFock
 
 -- ===========> Local Types <====================
 
@@ -38,11 +37,10 @@ the Coulombic and exchange integrals-}
 energyGradient :: Monad m => [AtomData] -> HFData -> m Gradient
 energyGradient !atoms !hfData = do
         termCore    <- calcCoreTerm      atoms hfData norbital
---         termJK      <- calcIntegralsTerm atoms hfData norbital
---         termOverlap <- calcOverlapTerm   atoms hfData norbital
---         termNuclear <- firstNuclearDerivative atoms
---         computeUnboxedP $ termCore +^ termJK -^ termOverlap +^ termNuclear
-        return termCore
+        termJK      <- calcIntegralsTerm atoms hfData norbital
+        termOverlap <- calcOverlapTerm   atoms hfData norbital
+        termNuclear <- firstNuclearDerivative atoms
+        computeUnboxedP $ termCore +^ termJK -^ termOverlap +^ termNuclear
 
   where norbital = sum . fmap (length . getBasis) $ atoms         
 
@@ -105,7 +103,7 @@ calcJKDerivatives !atoms !norbital = computeUnboxedP . fromFunction (Z :. dimCar
 
 -- rewrite this Ugly function!!!
 dervJKuvrs :: [(NucCoord,CGF)] -> (NucCoord,[CGF]) -> Int -> Double
-dervJKuvrs [!at1,!at2,!at3,!at4] (!rl,!derv_cgfl) !l = 
+dervJKuvrs [!at1,!at2,!at3,!at4] (!rl,!derv_cgfl) !l =
   case l of
        0 -> sum $ fmap (\cgfDerv -> contracted4Centers [(rl,cgfDerv),at2,at3,at4]) derv_cgfl
        1 -> sum $ fmap (\cgfDerv -> contracted4Centers [at1,(rl,cgfDerv),at3,at4]) derv_cgfl
@@ -139,12 +137,10 @@ calcCoreDerivatives !atoms !norbital = computeUnboxedP . fromFunction (Z :. dimC
                        rA = getCoord $ atoms !!  (k`div`3)
                        [derv_cgf1,derv_cgf2] = fmap (calcDervCGF dx) [cgf1,cgf2]
                        firstTerm  = coreterm1 atoms r1 (r2,cgf2) derv_cgf1
-                       secondTerm = coreterm2 (r1,cgf1) (r2,cgf2) rA dx
+--                        secondTerm = coreterm2 (r1,cgf1) (r2,cgf2) rA dx
+                       secondTerm = 0.0
                        thirdTerm  = coreterm1 atoms r2 (r1,cgf1) derv_cgf2
-                   in  firstTerm + secondTerm + thirdTerm    
---                    in if checknonZeroDerivative atoms k [i,j] 
---                                   then firstTerm + secondTerm + thirdTerm 
---                                   else 0.0
+                   in firstTerm + secondTerm + thirdTerm
 
   where dimTriang = (norbital^2 + norbital) `div`2
         dimCart   = 3 * (length atoms)        
@@ -231,11 +227,11 @@ firstNuclearDerivative atoms =
                      atomB <- atoms
                      guard $ atomB /= atomA                     
                      let (zb,rb) = getZnumber &&& getCoord $ atomB
-                         rab = vecSub ra rb
-                         rab_mod = sqrt . U.sum . U.map (^2) $ rab
+                         rab = DL.zipWith (-) ra rb
+                         rab_mod = sqrt . sum . fmap (^2) $ rab
                          rab3 = rab_mod^3
                          cte = za*zb/rab3
-                     return $!!  cte * (rab U.! j)
+                     return $!!  cte * (rab !! j)
 
   where  numat = length atoms                                                      
          totalDIM = 3 * numat                                                      
@@ -258,23 +254,6 @@ calcDervCGF ax cgf =
                      else [giPlus,giDown]
 
 
-checknonZeroDerivative :: [AtomData] -> Int -> [Int] -> Bool
-checknonZeroDerivative atoms k xs = and $ fun <$> xs 
-  where rs = calcRange atoms (k `div` 3)            
-        fun i =  i `elem` rs
-        
-
-calcRange :: [AtomData] -> Int -> [Int]
-calcRange atoms@(x:xs) i = fun 
-  where fun  = let (ys,zs) = splitAt i atoms
-                   lower   = sum $ fmap (length . getBasis) ys
-                   upper   = pred . length . getBasis . head $ zs                    
-                   nb      = lower + upper 
-               in if i == 0 then [0..upper]
-                            else [lower..nb]
-
-                
-                     
 kronecker :: Int -> Int -> Double
 kronecker i j | i == j    = 1
               | otherwise = 0

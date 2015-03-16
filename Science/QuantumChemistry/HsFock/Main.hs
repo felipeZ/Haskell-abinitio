@@ -5,13 +5,12 @@
 -- @2012,2013 Felipe Zapata core SCF machinery 
 
 
-module Main where
+module Science.QuantumChemistry.HsFock.Main where
 
 import Data.List (find)
 import Data.Maybe ( fromMaybe )
 import Control.Concurrent
 import Control.Concurrent.Async
-import Control.Exception.Base (evaluate)
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Either
 import System.Cmd ( system )
@@ -27,15 +26,15 @@ import Data.Version (showVersion)
 import Distribution.Version
 import Paths_HartreeFock as HsApp
 
-import Options                           -- Here we define the needed fields
-import OptsCheck            
+-- Internal Modules 
+import Science.QuantumChemistry.HsFock.Options   -- Here we define the needed fields
+import Science.QuantumChemistry.HsFock.OptsCheck            
 
-import Derivatives                       -- Hartree-Fock Energy derivatives
-import HartreeFock                       -- This is the main HartreeFock library, providing functions and types needed
-import LinearAlgebra
-import Logger                            -- Logger functions 
-import Project                           -- We define a generic project skeleton for sample data
-import SampleProjects                    -- We include several sample projects for ease of testing
+import Science.QuantumChemistry.HartreeFock.Derivatives    -- Hartree-Fock Energy derivatives
+import Science.QuantumChemistry.HartreeFock.HartreeFock    -- This is the main HartreeFock library, providing functions and types needed
+import Science.QuantumChemistry.ConcurrencyTools.Logger    -- Logger functions 
+import Science.QuantumChemistry.HsFock.Project             -- We define a generic project skeleton for sample data
+import Science.QuantumChemistry.HsFock.SampleProjects      -- We include several sample projects for ease of testing
 
 
 progName = "HaskellFock SCF project , Version:" ++ currVersion ++ " "
@@ -49,7 +48,7 @@ progAuthors = "@2013 Felipe Zapata, Angel Alvarez, Alessio Valentini"
 defaultOptions    = Options
  { 
 --      optDump        = False
-   optModules     = [("scf",doSCF), ("integrals",doIntegrals), ("print",printFiles)]    -- Two payload modules (print is also de default action right now)
+   optModules     = [("scf",doSCF),("print",printFiles)]    -- Two payload modules (print is also de default action right now)
  , optMode        = Nothing
  , optVerbose     = False
  , optShowVersion = False
@@ -135,10 +134,40 @@ acceptedOptions =
 --     print "Final Fock Matrix"
 --     print $ getFock result
 
+-- doSCF :: Options -> IO ()
+-- doSCF optsR = do
+--     let projectdata = project "water" "6-31G*"
+--         charge = 0
+--         atom1 = AtomData r1 baseO 8.0
+--         atom2 = AtomData r2 baseH 1.0
+--         atom3 = AtomData r3 baseH 1.0
+--         [r1, r2, r3] = atomList projectdata
+--         [baseH,baseO] = pBasis projectdata
+--     putStrLn "Starting main SCF calculations, please wait...."
+--     putStrLn "number of shells"
+--     print .  sum . fmap (length . getBasis) $ [atom1,atom2,atom3]
+--     putStrLn "Overlap Matrix"
+--     s <- mtxOverlap [atom1,atom2,atom3]
+--     print s
+--     print "Hcore"
+--     core <- hcore [atom1,atom2,atom3]
+--     print core
+--     result <- scfHF [atom1,atom2,atom3] charge
+--     print "HF"
+--     print $ getEnergy result
+--     print "Final Density"
+--     print $ getDensity result
+--     print "Orbital Energy"
+--     print $ getOrbE result
+--     print "Final Coeeficients"
+--     print $ getCoeff result
+--     print "Final Fock Matrix"
+--     print $ getFock result
+
 doSCF :: Options -> IO ()
 doSCF optsR = do
-    logger <- initLogger "water_sto_6-31Gs.out"
-    let projectdata =project "water" "6-31G*" 
+    logger <- initLogger "water_sto_3g.out"
+    let projectdata = project "water" "STO-3G"
         charge = 0
         atom1 = AtomData r1 baseO 8.0
         atom2 = AtomData r2 baseH 1.0
@@ -152,50 +181,12 @@ doSCF optsR = do
     logMessage logger "Hartree-Fock has succeeded !!!\n"
     logMessage logger "HF\n"
     logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
+    -- logMessage logger "Calculating the gradient\n"
+    -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
+    -- logMessage logger $ show gradient
+    logMessage logger "The answer is 42!!"
     logStop logger
-
-
-
--- doSCF :: Options -> IO ()
--- doSCF optsR = do
---     logger <- initLogger "water_sto_3g.out"
---     let projectdata = project "water" "STO-3G"
---         charge = 0
---         atom1 = AtomData r1 baseO 8.0
---         atom2 = AtomData r2 baseH 1.0
---         atom3 = AtomData r3 baseH 1.0
---         [r1, r2, r3] = atomList projectdata
---         [baseH,baseO] = pBasis projectdata
---     logMessage logger "Starting main SCF calculations, please wait....\n"
---     logMessage logger "number of shells: "
---     logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2,atom3]
---     hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
---     logMessage logger "Hartree-Fock has succeeded !!!\n"
---     logMessage logger "HF\n"
---     logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
---     -- logMessage logger "Calculating the gradient\n"
---     -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
---     -- logMessage logger $ show gradient
---     logStop logger
--- --     print $ fmap (\x -> checknonZeroDerivative [atom1,atom2,atom2] x [6,6]) [0..8] 
-
-doIntegrals :: Options -> IO ()
-doIntegrals optsR = do
-    logger <- initLogger "Integrals_water_sto_3g.out"
-    let projectdata = project "water" "STO-3G"
-        charge = 0
-        atom1 = AtomData r1 baseO 8.0
-        atom2 = AtomData r2 baseH 1.0
-        atom3 = AtomData r3 baseH 1.0
-        [r1, r2, r3] = atomList projectdata
-        [baseH,baseO] = pBasis projectdata
-    logMessage logger "Starting main SCF calculations, please wait....\n"
-    logMessage logger "number of shells: "
-    logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2,atom3]
-    integrals   <- calcIntegrals [atom1,atom2,atom3]
-    evaluate integrals
-    logMessage logger "DONE"
-    logStop logger
+    
 
 
 -- ============================================= No user serviceable parts beyond this point! ====================================================

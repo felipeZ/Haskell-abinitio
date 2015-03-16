@@ -6,7 +6,7 @@
 -- Simon Marlow in "Parallel and Concurrent Programming
 -- in Haskell
 
-module Logger where
+module Science.QuantumChemistry.ConcurrencyTools.Logger where
 
 import Control.Concurrent
 import Control.Concurrent.Async

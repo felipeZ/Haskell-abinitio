@@ -10,7 +10,7 @@
 -- Chemical Physics Letters 73 (2): 393–398.
 
 
-module DIIS (
+module Science.QuantumChemistry.HartreeFock.DIIS (
               DataDIIS(..)
              ,calcErrorMtx
              ,diis
@@ -21,14 +21,14 @@ module DIIS (
 import Control.Monad ((<=<))             
 import Data.Array.Repa         as R
 import Data.Array.Repa.Unsafe  as R
-import Data.Array.Repa.Algorithms.Matrix
+import Data.Array.Repa.Algorithms.Matrix as R
 import qualified Data.List as DL
 import qualified Data.Vector.Unboxed as VU
 
 -- Internal imports
-import GaussElimination (gaussElem)
-import GlobalTypes
-import LinearAlgebra
+import Science.QuantumChemistry.NumericalTools.GaussElimination (gaussElem)
+import Science.QuantumChemistry.NumericalTools.GlobalTypes
+import Science.QuantumChemistry.NumericalTools.LinearAlgebra
 
 
 

@@ -5,11 +5,11 @@
 -- @2012,2013 Angel Alvarez Adhesive tape
 -- @2012,2013 Felipe Zapata core SCF machinery 
 
-module Project where
+module Science.QuantumChemistry.HsFock.Project where
 
 
 -- import GlobalTypes
-import HartreeFock
+import Science.QuantumChemistry.HartreeFock.HartreeFock
 
 data ProjectData = PD 
     {
