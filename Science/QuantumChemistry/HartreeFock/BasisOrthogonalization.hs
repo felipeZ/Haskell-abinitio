@@ -1,9 +1,9 @@
 
-module BasisOrthogonalization where
+module Science.QuantumChemistry.HartreeFock.BasisOrthogonalization  where
 
 import Data.Array.Repa as R
 import Data.Array.Repa.Unsafe as R
-import Data.Array.Repa.Algorithms.Matrix as R
+import Data.Array.Repa.Algorithms.Matrix (mmultP,transpose2P)
 import qualified Data.List as DL
 import qualified Data.Vector.Unboxed as VU
 
@@ -26,9 +26,9 @@ symmOrtho arr = do
       eigVecs = LA.eigenvec  eigData
       invSqrt = computeUnboxedS . R.map (recip . sqrt) $ eigVal -- For building the S^-1/2 matrix
       diag = LA.vec2Diagonal invSqrt
-  eigVecTrans <- LA.transpose2P eigVecs
-  mtx1 <- LA.mmultP eigVecs diag
-  LA.mmultP mtx1 eigVecTrans
+  eigVecTrans <- transpose2P eigVecs
+  mtx1 <- mmultP eigVecs diag
+  mmultP mtx1 eigVecTrans
 --   LA.mmultP eigenvecs <=< LA.mmultP eigenvecs $ diag 
   
 canortho :: Monad m => Array U DIM2 Double -> m (Array U DIM2 Double)

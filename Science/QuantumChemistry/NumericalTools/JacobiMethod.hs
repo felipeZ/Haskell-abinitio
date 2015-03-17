@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts,BangPatterns #-}
 
-module JacobiMethod
+module Science.QuantumChemistry.NumericalTools.JacobiMethod
     ( jacobiP
     ) where
 
@@ -9,7 +9,7 @@ import Data.Array.Repa         as R
 import Data.Array.Repa.Unsafe  as R
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as V
-import LinearAlgebra as LA
+import Science.QuantumChemistry.NumericalTools.LinearAlgebra as LA
 
 
 

@@ -27,7 +27,7 @@ import qualified Data.Vector.Unboxed as VU
 
 -- Internal imports
 import Science.QuantumChemistry.NumericalTools.GaussElimination (gaussElem)
-import Science.QuantumChemistry.NumericalTools.GlobalTypes
+import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra
 
 

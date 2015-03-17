@@ -16,7 +16,7 @@ module Science.QuantumChemistry.ParsecTools.BasisParser
 import Data.Char
 import Data.List as DL
 import Text.Parsec
-import Text.Parsec.ByteString (Parser)
+import Text.Parsec.ByteString (Parser,parseFromFile)
 
 -- -----------------> Internal Modules <----------------
 import Science.QuantumChemistry.ParsecTools.ParsecNumbers
@@ -48,8 +48,8 @@ data Element =
 processBasisFile :: FilePath -> IO ()
 processBasisFile fname = do
         putStrLn $ "Processing file:" ++ (show fname) ++ "\n"
-        input  <- readFile fname
-        case (runParser basisFileParser () fname input) of
+        r <- parseFromFile basisFileParser fname
+        case r of
              Left err  -> print err
              Right xs  -> mapM_ printElement xs
     

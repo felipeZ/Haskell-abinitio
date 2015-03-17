@@ -1,12 +1,7 @@
 
-module Science.QuantumChemistry.ParsecTools
-                                (
-                                 BasisParser
-                                ,ParsecNumbers
-                                ,ParsecText
-                                ) where
+module Science.QuantumChemistry.ParsecTools where
 
-import Science.QuantumChemistry.NumericalTools (BasisParser,ParsecNumbers,ParsecText)
+import Science.QuantumChemistry.ParsecTools.BasisParser 
+import Science.QuantumChemistry.ParsecTools.ParsecNumbers
+import Science.QuantumChemistry.ParsecTools.ParsecText
 
-
-    

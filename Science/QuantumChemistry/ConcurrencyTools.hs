@@ -1,11 +1,11 @@
 
 module Science.QuantumChemistry.ConcurrencyTools
-                                (
-                                 ConcurrencyUtilities
-                                ,Logger                     
-                                ) where
+                                -- (
+                                -- )
+    where
 
-import Science.QuantumChemistry.ConcurrencyTools (ConcurrencyUtilities,Logger)  
+import Science.QuantumChemistry.ConcurrencyTools.ConcurrencyUtilities
+import Science.QuantumChemistry.ConcurrencyTools.Logger
 
 
     

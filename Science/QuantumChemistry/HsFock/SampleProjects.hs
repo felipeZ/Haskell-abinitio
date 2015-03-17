@@ -6,7 +6,9 @@
 
 module Science.QuantumChemistry.HsFock.SampleProjects where
 
+import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.HartreeFock.HartreeFock
+import Science.QuantumChemistry.HartreeFock.IntegralsEvaluation (normaCoeff)
 import Science.QuantumChemistry.HsFock.Project
 
 

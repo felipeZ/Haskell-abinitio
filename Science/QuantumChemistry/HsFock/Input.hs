@@ -15,9 +15,13 @@ import Data.Char (toLower,toUpper)
 import Control.Arrow ((***),second)
 import Control.Monad(liftM)
 import Data.Maybe (fromMaybe)
-import GlobalTypes
 import qualified Data.Map as M
 
+-- ------------------------> <---------------------------------
+import Science.QuantumChemistry.GlobalTypes
+
+-- =====================> TYPES <============================
+    
 data JobInfo = JobInfo {
     jobTheory :: String
    ,jobBasis  :: [Basis]
@@ -26,7 +30,6 @@ data JobInfo = JobInfo {
    ,jobCoord  :: [(String,[Double])]
     } deriving Show
 
--- =====================> TYPES <============================
 
 data InputError = UnkownAtomicElement 
 

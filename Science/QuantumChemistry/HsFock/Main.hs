@@ -13,7 +13,6 @@ import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Either
-import System.Cmd ( system )
 import System.Console.GetOpt
 import System.Directory (doesDirectoryExist)
 import System.Environment ( getArgs )
@@ -27,12 +26,14 @@ import Distribution.Version
 import Paths_HartreeFock as HsApp
 
 -- Internal Modules 
-import Science.QuantumChemistry.HsFock.Options   -- Here we define the needed fields
-import Science.QuantumChemistry.HsFock.OptsCheck            
+import Science.QuantumChemistry.ConcurrencyTools.Logger    -- Logger functions 
+import Science.QuantumChemistry.GlobalTypes
 
 import Science.QuantumChemistry.HartreeFock.Derivatives    -- Hartree-Fock Energy derivatives
 import Science.QuantumChemistry.HartreeFock.HartreeFock    -- This is the main HartreeFock library, providing functions and types needed
-import Science.QuantumChemistry.ConcurrencyTools.Logger    -- Logger functions 
+import Science.QuantumChemistry.HsFock.Options   -- Here we define the needed fields
+import Science.QuantumChemistry.HsFock.OptsCheck            
+
 import Science.QuantumChemistry.HsFock.Project             -- We define a generic project skeleton for sample data
 import Science.QuantumChemistry.HsFock.SampleProjects      -- We include several sample projects for ease of testing
 

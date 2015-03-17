@@ -16,9 +16,7 @@
 
 -- | Restricted Hartree-Fock Method
 module Science.QuantumChemistry.HartreeFock.HartreeFock (
-      module GlobalTypes
-     ,module IntegralsEvaluation
-     ,HFData(..)
+      HFData(..)
      ,boysF
      ,calcIntegrals
      ,scfHF
@@ -46,7 +44,7 @@ import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.HartreeFock.IntegralsEvaluation
 import Science.QuantumChemistry.NumericalTools.JacobiMethod (jacobiP)
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra
-import Science.QuantumChemistry.ConcurrentTools.Logger
+import Science.QuantumChemistry.ConcurrencyTools.Logger
 
 
 -- ===============> MODULE HARTREE-FOCK <========================================

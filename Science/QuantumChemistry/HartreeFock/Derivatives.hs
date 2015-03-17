@@ -23,6 +23,7 @@ import qualified Data.Vector.Unboxed as VU
 import Science.QuantumChemistry.GlobalTypes as G
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra as LA
 import Science.QuantumChemistry.HartreeFock.HartreeFock
+import Science.QuantumChemistry.HartreeFock.IntegralsEvaluation
 
 -- ===========> Local Types <====================
 

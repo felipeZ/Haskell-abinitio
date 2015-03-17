@@ -4,7 +4,7 @@ module  Science.QuantumChemistry.ParsecTools.ParsecNumbers where
 import Data.Char
 import Control.Monad
 import Text.Parsec 
-import Text.Parsec.Bytestring (Parser)
+import Text.Parsec.ByteString (Parser)
 
 
 -- 

@@ -8,7 +8,7 @@
 module Science.QuantumChemistry.HsFock.Project where
 
 
--- import GlobalTypes
+import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.HartreeFock.HartreeFock
 
 data ProjectData = PD 

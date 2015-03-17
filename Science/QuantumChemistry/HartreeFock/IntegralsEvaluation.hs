@@ -40,7 +40,7 @@ import qualified Data.Vector.Unboxed as VU
 -- internal modules 
 import Science.QuantumChemistry.NumericalTools.Boys(boysF)
 import Science.QuantumChemistry.GlobalTypes
-import Science.QuantumChemistry.NumericalTools.LinearAlgebra
+import Science.QuantumChemistry.NumericalTools.LinearAlgebra as LA
 
 --  ======================= > MODULE FOR EVALUATING THE ONE AND TWO ELECTRON TYPE INTEGRALS < =============================
 {- | This module is based on chapter 9 "Molecular Integral Evaluation" in the book
