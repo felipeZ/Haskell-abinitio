@@ -192,13 +192,14 @@ doSCF optsR = do
 
 -- ============================================= No user serviceable parts beyond this point! ====================================================
 
-main :: IO ()
-main = do
+hsFock :: IO ()
+hsFock  = do
     args   <- getArgs
     cores  <- getNumCapabilities
     progHeader cores
     result <- runEitherT $ progOpts args defaultOptions acceptedOptions  -- thread Options over monadic checkers using EitherT over IO
     either somethingIsWrong doSomeStuff result                           --
+
 
 -- | somethingIsWrong bang in forn tof the user and let him/her hiow to do proper things
 somethingIsWrong :: String -> IO ()    
