@@ -33,6 +33,8 @@ type EigenValues = VU.Vector Double
 -- | EigenVectors are represented as a DIM2 Repa Array
 type EigenVectors = Array U DIM2 Double
 
+type Flatten = Array U DIM1 Double
+
 -- | Coefficient and exponent describing a primitive gaussian function
 type GaussPrimitive = (Double,Double)
 
@@ -58,6 +60,8 @@ type OccupiedShells   = Int
 type Step = Int
 
 type Threshold = Double
+
+type VecUnbox  = VU.Vector Double
 
 -- | Atomic Number
 type ZNumber = Double

@@ -20,11 +20,9 @@ import Science.QuantumChemistry.NumericalTools.JacobiMethod (jacobiP)
 --   S^-1/2
 symmOrtho :: Monad m => Array U DIM2 Double -> m (Array U DIM2 Double)
 symmOrtho arr = do
-  eigData <- jacobiP $ arr
+  (eigVal,eigVecs) <- jacobiP $ arr
   let (Z:.dim:._) = extent arr
-      eigVal = fromUnboxed (Z:. dim) $ LA.eigenvals eigData
-      eigVecs = LA.eigenvec  eigData
-      invSqrt = computeUnboxedS . R.map (recip . sqrt) $ eigVal -- For building the S^-1/2 matrix
+      invSqrt = computeUnboxedS . R.map (recip . sqrt) $ fromUnboxed (Z:. dim) eigVal -- For building the S^-1/2 matrix
       diag = LA.vec2Diagonal invSqrt
   eigVecTrans <- transpose2P eigVecs
   mtx1 <- mmultP eigVecs diag
@@ -33,10 +31,8 @@ symmOrtho arr = do
   
 canortho :: Monad m => Array U DIM2 Double -> m (Array U DIM2 Double)
 canortho arr = do
-  eigData <- jacobiP arr
-  let eigVal = LA.eigenvals eigData
-      eigVecs = LA.eigenvec  eigData
-      invSqrt = VU.map (recip . sqrt) eigVal -- For building the S^-1/2 matrix
+  (eigVal,eigVecs) <- jacobiP arr
+  let invSqrt = VU.map (recip . sqrt) eigVal -- For building the S^-1/2 matrix
   R.computeUnboxedP $  R.traverse eigVecs id (\f sh@(Z:._:. k) -> (invSqrt VU.! k) * f sh)
 
 

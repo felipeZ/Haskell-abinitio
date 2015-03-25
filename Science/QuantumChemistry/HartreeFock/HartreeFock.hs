@@ -125,13 +125,13 @@ harrisFunctional !fcore !xmatrix !integrals !occupied = do
 computeGuessIntegrals :: Monad m =>  Integrals -> OccupiedShells -> Int -> m (Array U DIM1 Double)
 computeGuessIntegrals  !integrals !occupied !dim = 
   computeUnboxedP $ fromFunction (Z:.dim) $
-     \(Z :. m ) -> let (i,j) = indexFlat2DIM2 dim m
-                   in (2*) . sumAllS $ fromFunction (Z :. occupied) $
-                        \(Z:.k) -> let flat1 = calcIndex [i,j,k,k]
-                                       flat2 = calcIndex [i,k,k,j]
-                                       coulomb  = integrals ! (Z:.flat1)
-                                       exchange = integrals ! (Z:.flat2)
-                                   in coulomb - 0.5* exchange
+     \idx -> let (Z:.i:.j) = indexFlat2DIM2 dim idx
+             in (2*) . sumAllS $ fromFunction (Z :. occupied) $
+                  \(Z:.k) -> let flat1 = calcIndex [i,j,k,k]
+                                 flat2 = calcIndex [i,k,k,j]
+                                 coulomb  = integrals ! (Z:.flat1)
+                                 exchange = integrals ! (Z:.flat2)
+                             in coulomb - 0.5* exchange
 
   where calcIndex = fourIndex2Flat occupied . sortKeys                                   
 
@@ -177,8 +177,8 @@ calcDensity !arr !occupied =
             flat = (dim^2 + dim)`div`2
         computeP
          $ fromFunction (Z :. flat)
-         (\(Z:. x)  ->
-                  let (k,l) =  indexFlat2DIM2 dim x
+         (\idx  ->
+                  let (Z:.k:.l) =  indexFlat2DIM2 dim idx
                       v1 = R.slice arr (Any :. k :. All)
                       v2 = R.slice arr (Any :. l :. All)
                       p1 = R.extract (Z:.0) (Z :. occupied) v1
@@ -234,7 +234,7 @@ sliceIntegrals !atoms !integrals (!i,!l) !nshells =
            exchange = integrals ! (Z:.flat2)
        in coulomb - 0.5* exchange)
 
-  where (a,b) = indexFlat2DIM2 nshells i
+  where (Z:.a:.b) = indexFlat2DIM2 nshells $ ix1 i
         calcIndex = fourIndex2Flat nshells . sortKeys
 {-# INLINE sliceIntegrals #-}        
 
@@ -244,11 +244,10 @@ diagonalHF :: Monad m => FlattenFock ->
                          OccupiedShells ->
                          m (MOCoefficients,FlattenChargeDensity,EigenValues)
 diagonalHF !fock1 !xmatrix !occupied = do
-        fDIM2 <- unitaryTransf xmatrix fock1
-        eigData <- jacobiP fDIM2
-        let (coeff,orbEs) = eigenvec &&& eigenvals $ eigData
-        newCoeff <- mmultP xmatrix coeff
-        newDensity <- calcDensity newCoeff occupied
+        fDIM2          <- unitaryTransf xmatrix fock1
+        (orbEs,coeff)  <- jacobiP fDIM2
+        newCoeff       <- mmultP xmatrix coeff
+        newDensity     <- calcDensity newCoeff occupied
         return $ (newCoeff, newDensity, orbEs)
         
                    

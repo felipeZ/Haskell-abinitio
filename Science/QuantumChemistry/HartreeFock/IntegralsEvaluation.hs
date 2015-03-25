@@ -163,9 +163,9 @@ b1 <<| op  = (b1,op)
 
 mtxOverlap :: Monad m => [AtomData] -> m (Array U DIM1 Double) 
 mtxOverlap !atoms = computeUnboxedP . fromFunction (Z:.dim) $
- (\(Z:.k) -> let (i,j) = LA.indexFlat2DIM2 norbital k
-                 [(r1,cgf1),(r2,cgf2)] = fmap calcIndex $ [i,j]
-             in sijContracted r1 r2 cgf1 cgf2)
+ (\idx -> let (Z:.i:.j) = LA.indexFlat2DIM2 norbital idx
+              [(r1,cgf1),(r2,cgf2)] = fmap calcIndex $ [i,j]
+          in sijContracted r1 r2 cgf1 cgf2)
              
   where norbital = sum . fmap (length . getBasis) $ atoms
         dim = (norbital^2 + norbital) `div`2
@@ -221,10 +221,10 @@ obaraSaika !gamma !s00 !pax !pbx !i !j = s i j
 -- | Core Hamiltonian Matrix Calculation
 hcore :: Monad m => [AtomData] -> m (Array U DIM1 Double)
 hcore !atoms  = computeUnboxedP . fromFunction (Z:. dim) $
- (\(Z:.k) -> let (i,j) = LA.indexFlat2DIM2 norbital k
-                 [atomi,atomj] = fmap calcIndex $ [i,j]
-                 derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
-                 sumVij = sum $!! DL.zipWith (\z rc -> ((-z) * atomi <<|Vij rc derv |>> atomj)) atomicZ coords
+ (\idx -> let (Z:.i:.j) = LA.indexFlat2DIM2 norbital idx
+              [atomi,atomj] = fmap calcIndex $ [i,j]
+              derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
+              sumVij = sum $!! DL.zipWith (\z rc -> ((-z) * atomi <<|Vij rc derv |>> atomj)) atomicZ coords
              in (atomi <<|Tij|>> atomj) + sumVij)
 
   where coords = fmap getCoord atoms

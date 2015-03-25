@@ -54,8 +54,8 @@ calcIntegralsTerm !atoms !hfData !norbital = do
    \(Z:. k) -> let dJKuvrs_dXa = computeUnboxedS $ unsafeSlice jkDerivatives (Any :. k :. All)
                in sumAllS $ fromFunction (Z:. dimTriang :. dimTriang) $
                    \(Z:. m :. n) ->
-                      let (u,v) = LA.indexFlat2DIM2 norbital m
-                          (r,s) = LA.indexFlat2DIM2 norbital n
+                      let (Z:.u:.v) = LA.indexFlat2DIM2 norbital $ ix1 m
+                          (Z:.r:.s) = LA.indexFlat2DIM2 norbital $ ix1 n
                           uv = calcij u v
                           rs = calcij r s
                           totalkr = product $ DL.zipWith calcKr [u,r,uv] [v,s,rs]
@@ -119,11 +119,11 @@ calcCoreTerm !atoms !hfData !norbital = do
   computeUnboxedP $ fromFunction (Z:. dim) $
    \(Z:. k) -> let dhuv_dXa = computeUnboxedS $ unsafeSlice coreDerivatives (Any :. k :. All)
                in (2*) . sumAllS $ fromFunction (extent dhuv_dXa) $
-                   \sh@(Z:. i) -> let (u,v) = LA.indexFlat2DIM2 norbital i
-                                      duv = density ! sh
-                                      huv = dhuv_dXa ! sh
-                                      kr = 1- (kronecker u v) / 2
-                                  in kr * duv * huv
+                   \sh -> let (Z:.u:.v) = LA.indexFlat2DIM2 norbital sh
+                              duv = density ! sh
+                              huv = dhuv_dXa ! sh
+                              kr = 1- (kronecker u v) / 2
+                          in kr * duv * huv
 
   where dim = 3 * (length atoms)
         dimTriang = (norbital^2 + norbital) `div`2
@@ -132,7 +132,7 @@ calcCoreTerm !atoms !hfData !norbital = do
 calcCoreDerivatives :: Monad m => [AtomData] -> Int -> m Matrix
 calcCoreDerivatives !atoms !norbital = computeUnboxedP . fromFunction (Z :. dimCart :. dimTriang) $
   \(Z:. k :. m) -> let calcIndex = LA.calcCoordCGF atoms
-                       (i,j) = LA.indexFlat2DIM2 norbital m
+                       (Z:.i:.j) = LA.indexFlat2DIM2 norbital $ ix1 m
                        [(r1,cgf1),(r2,cgf2)] = fmap calcIndex $ [i,j]
                        dx = G.toCartLabel $ k `rem` 3
                        rA = getCoord $ atoms !!  (k`div`3)
@@ -172,11 +172,11 @@ calcOverlapTerm !atoms !hfdata !norbital = do
   computeUnboxedP $ fromFunction (Z:. dim) $
    \(Z:. k) -> let dSuv_dXa = computeUnboxedS $ unsafeSlice overlapDerivatives (Any :. k :. All)
                in(4*) . sumAllS $ fromFunction (extent dSuv_dXa) $
-                      \sh@(Z:. i) -> let (u,v) = LA.indexFlat2DIM2 norbital i
-                                         wuv = wFlatten ! sh
-                                         suv = dSuv_dXa ! sh
-                                         kr = 1- (kronecker u v) / 2
-                                     in kr * wuv * suv
+                      \sh -> let (Z:.u:.v) = LA.indexFlat2DIM2 norbital sh
+                                 wuv = wFlatten ! sh
+                                 suv = dSuv_dXa ! sh
+                                 kr = 1- (kronecker u v) / 2
+                             in kr * wuv * suv
                                     
   where dim = 3 * (length atoms)
 {-# INLINE calcOverlapTerm #-}
@@ -187,7 +187,7 @@ calcOverlapTerm !atoms !hfdata !norbital = do
 calcOverlapDerivatives :: Monad m => [AtomData] -> Int -> m Matrix
 calcOverlapDerivatives !atoms !norbital =  computeUnboxedP . fromFunction (Z :. dimCart :. dimTriang) $
   \(Z:. k :. m) -> let calcIndex = LA.calcCoordCGF atoms
-                       (i,j) = LA.indexFlat2DIM2 norbital m
+                       (Z:.i:.j) = LA.indexFlat2DIM2 norbital $ ix1 m
                        [(r1,cgf1),(r2,cgf2)] = fmap calcIndex $ [i,j]
                        dx = G.toCartLabel $ k `rem` 3
                        [derv_cgf1,derv_cgf2] = fmap (calcDervCGF dx) [cgf1,cgf2]
@@ -208,12 +208,12 @@ calcWmatrix hfData norbital = do
         fockMtx <- triang2DIM2 fockFlatten
         epsilonMtx <- transpose2P cs >>= (\csT -> mmultP csT <=< mmultP fockMtx $ cs)
         computeUnboxedP $ fromFunction (Z:.dim) $
-         \(Z:. k) -> let (u,v) = LA.indexFlat2DIM2 norbital k
-                         in sumAllS $ fromFunction (extent cs) $
-                            \sh@(Z:. i :. j) -> let cui = (cs ! (Z:. u:.i))
-                                                    cvj = (cs ! (Z:. v:.j))
-                                                    eij = (epsilonMtx ! sh)
-                                                in cui * cvj * eij
+         \idx -> let (Z:.u:.v) = LA.indexFlat2DIM2 norbital idx
+                 in sumAllS $ fromFunction (extent cs) $
+                    \sh@(Z:. i :. j) -> let cui = (cs ! (Z:. u:.i))
+                                            cvj = (cs ! (Z:. v:.j))
+                                            eij = (epsilonMtx ! sh)
+                                        in cui * cvj * eij
 {-# INLINE calcWmatrix #-}
 
 -- ==========================> Nuclear repulsion derivatives <=========================          

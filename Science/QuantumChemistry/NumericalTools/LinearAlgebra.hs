@@ -10,6 +10,7 @@ module  Science.QuantumChemistry.NumericalTools.LinearAlgebra (
       ,EigenData(..)
       ,calcCoordCGF
       ,calcIndexShell
+      ,diagonal
       ,dimTriang
       ,dotMatrix
       ,flattenZero
@@ -42,12 +43,12 @@ module  Science.QuantumChemistry.NumericalTools.LinearAlgebra (
 
 import Data.List (lookup, tails, transpose, zip5)
 import Control.Applicative
+import Control.Monad(ap, liftM, mplus)
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Map as M
 import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix as R
-import Control.Monad(ap,mplus)
 
 -- ============> Internal imports <==============
 import Science.QuantumChemistry.GlobalTypes
@@ -57,6 +58,8 @@ type DIM = Int
 type Indx = (Int,Int)
 type Tolerance = Double
 type Step = Int
+
+-- ----------------------------> <---------------------------
 
 
 -- |The dot product between two matrices
@@ -144,6 +147,11 @@ scalarxMtx !arr !s = R.computeUnboxedS $ R.unsafeTraverse arr id (\f sh -> s * f
 {-# INLINE scalarxMtx #-}
 
 
+diagonal :: Monad m => Matrix -> m VecUnbox        
+diagonal mtx = liftM toUnboxed  $ computeUnboxedP $ unsafeBackpermute (ix1 dim) (\(Z:.i) -> ix2 i i) mtx
+
+  where (Z:. dim :._) = extent mtx
+        
 -- ============> Hartree -Fock Linear Algebra <=========
 -- | Transform the given matrix into the orthogonal basis
 unitaryTransf :: Monad m => TransformMatrix -> Array U DIM1 Double -> m(Array U DIM2 Double)
@@ -157,10 +165,10 @@ unitaryTransf !orthoMtx !mtx = do
 -- ==============> FUNCTIONS FOR GENERATING REPA ARRAYS <=====================
 
 -- Identity matrix
-identity :: VU.Unbox Double  => Int -> Array U DIM2 Double
-identity dim =  list2ArrDIM2 dim [dij i j | i <- [1..dim], j <- [1..dim]]
-  where dij u v = if u == v then 1.0 else 0.0
-  
+identity :: Int -> Matrix
+identity dim = R.computeUnboxedS $ R.fromFunction (ix2 dim dim) $
+  \(Z:. x:. y) -> if x==y then 1 else 0
+
 -- zero matrix  
 zero :: Int -> Array U DIM2 Double
 zero dim = R.computeUnboxedS $ R.fromFunction (Z:. dim:. dim)
@@ -218,12 +226,9 @@ triang2DIM2S ar = R.computeUnboxedS $ R.fromFunction (Z:.dim :. dim)
         dim = dimTriang $ len
         
 -- | Symmetric square matrix to flatten triangular matrix        
-toTriang :: Monad m => Array U DIM2 Double -> m (Array U DIM1 Double)
-toTriang arr = R.computeUnboxedP $ R.fromFunction (Z:. triang)
-              (\(Z:. i) ->
-              let (x,y) = indexFlat2DIM2 dim i
-              in arr ! (Z:. x:. y) )
-                 
+toTriang :: Monad m => Matrix -> m Flatten
+toTriang arr = computeUnboxedP $ unsafeBackpermute (ix1 triang) (indexFlat2DIM2 $ dim) arr              
+                
   where (Z:.dim:. _) = extent arr                  
         triang = sum [dim,pred dim .. 1]
 
@@ -239,8 +244,8 @@ vector2Matrix !n !list = [fmap (\i -> list !! (xs+i) ) [0..pred n] | xs <- xss]
 
 -- | Function to transform the indexes of a flatten upper triangular matrix to its equivalent
 --   symmetric square matrix
-indexFlat2DIM2 :: Int -> Int -> (Int,Int)
-indexFlat2DIM2  !dim !i = (x,y)
+indexFlat2DIM2 :: Int -> DIM1 -> DIM2 --
+indexFlat2DIM2  !dim  (Z:.i) = ix2 x y
   where x = f i 0
         y = g i x
         f !x !n = if x < (dim-n) then n else f (x-(dim-n)) (succ n)
