@@ -4,7 +4,7 @@
 -- @2013 Felipe Zapata, Angel Alvarez
 -- Linear Algebra General Utilities
 
-module  Science.QuantumChemistry.NumericalTools.LinearAlgebra ( 
+module Science.QuantumChemistry.NumericalTools.LinearAlgebra ( 
        EigenValues
       ,EigenVectors
       ,EigenData(..)

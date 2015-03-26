@@ -2,6 +2,7 @@
 
 module Science.QuantumChemistry.NumericalTools.JacobiMethodST (
                jacobiST
+              ,maxElemIndex
               ) where
 
 import Control.Arrow (second)
@@ -37,7 +38,6 @@ jacobiST !arr = second (fromUnboxed (ix2 dim dim)) $ sortEigenData $
                 ide <- unsafeThaw $ toUnboxed $ identity dim
                 loopJacobi vss ide dim 0 (1.0e-9)  
   where (Z:.dim:. _) = extent arr
-
                   
 
 -- | Loop to carry out the Jacobi Method rotations
@@ -77,29 +77,22 @@ rotateA :: PrimMonad m => MVector (PrimState m) Double ->
                           (DIM2 -> Int) ->
                           m (MVector (PrimState m) Double)
 rotateA arr kl@(Z:. k :. l) (Parameters s t tau) dim funIdx = 
- do  maxElem <- unsafeRead arr $ funIdx kl     
-     U.foldM'_  (update maxElem) () (generate (dim*dim) id)  
+ do  maxElem <- unsafeRead arr $ funIdx kl
+     uwrite (ix2 k l) 0
+     uread (ix2 k k) >>= \akk -> uwrite (ix2 k k) $ akk - t*maxElem
+     uread (ix2 l l) >>= \all -> uwrite (ix2 l l) $ all + t*maxElem
+     loopArr (\i -> ix2 i k) (\i -> ix2 i l) 0 k
+     loopArr (\i -> ix2 k i) (\i -> ix2 i l) (k+1) (l-k-1)
+     loopArr (\i -> ix2 k i) (\i -> ix2 l i) (l+1) (dim-l-1)
      return arr 
 
-  where update maxElem () idx = do 
-            val <- unsafeRead arr idx  
-            let sh        = fromIndex (ix2 dim dim) idx
-                uwrite    = unsafeWrite arr idx
-                gix2 a b  = unsafeRead arr (funIdx $ ix2 a b)
-                uwriteijP i j = gix2 i j >>= \x -> uwrite $ val - s*( x + tau*val)
-                uwriteijM i j = gix2 i j >>= \x -> uwrite $ val - s*( x - tau*val)
-                fun (Z:.n:.m) 
-                      | (n,m) == (k,l)           = uwrite $ 0.0
-                      | (n,m) == (k,k)           = uwrite $ val - t*maxElem
-                      | (n,m) == (l,l)           = uwrite $ val + t*maxElem
-                      | n < k && m == k          = uwriteijP n l 
-                      | n < k && m == l          = uwriteijM n k 
-                      | k < m && m < l && n == k = uwriteijP m l 
-                      | k < n && n < l && m == l = uwriteijM k n 
-                      | m > l && n == k          = uwriteijP l m 
-                      | m > l && n == l          = uwriteijM k m 
-                      | otherwise                = return ()                                   
-            fun sh
+  where uwrite idx = unsafeWrite arr (funIdx idx)
+        uread  = unsafeRead arr . funIdx
+        loopArr f g from len = U.forM_ (enumFromN from len ) $ \i ->  
+                do  val <- uread $ f i
+                    ail <- uread $ g i
+                    uwrite (f i) $ val - s*(ail + tau*val)
+                    uwrite (g i) $ ail + s*(val - tau*ail)
 {-# Inline rotateA #-}                     
    
 rotateP :: PrimMonad m => MVector (PrimState m) Double ->
@@ -108,19 +101,17 @@ rotateP :: PrimMonad m => MVector (PrimState m) Double ->
                           Int        -> 
                           (DIM2 -> Int) ->
                           m (MVector (PrimState m) Double)
-rotateP prr kl@(Z:. k :. l) (Parameters !s !t !tau) dim funIdx =  
-       U.foldM'_  update () (generate (dim*dim) id)  >> return prr
+rotateP prr kl@(Z:. k :. l) (Parameters !s !t !tau) dim funIdx =  do
+    U.forM_ (generate dim id ) $ \i ->  
+                do  val <- uread $ (ix2 i k)
+                    pil <- uread $ (ix2 i l)
+                    uwrite (ix2 i k) $ val - s*(pil + tau*val)
+                    uwrite (ix2 i l) $ pil + s*(val - tau*pil)
+    return prr 
 
-  where update () idx = do 
-          val <- unsafeRead prr idx  
-          let sh       = fromIndex (ix2 dim dim) idx
-              uwrite   = unsafeWrite prr idx 
-              gix2 a b = unsafeRead prr (funIdx $ ix2 a b)           
-              fun (Z:.x:.y)                      
-                 | y == k    = gix2 x l >>= \x -> uwrite $ val - s*(x + tau*val)
-                 | y == l    = gix2 x k >>= \x -> uwrite $ val + s*(x - tau*val)
-                 | otherwise = return ()
-          fun sh
+  where uwrite idx = unsafeWrite prr (funIdx idx)
+        uread      = unsafeRead prr . funIdx
+
 
 {-# Inline rotateP #-}                     
 
@@ -141,9 +132,9 @@ maxElemIndex  :: PrimMonad m =>
                    m DIM2
 maxElemIndex !arr dim  = liftM (fromIndex sh) $ U.foldM' fun 1 inds
 
-  where inds = U.enumFromN 0 (dim*dim) 
+  where inds = U.generate (dim*dim) id
         sh   = ix2 dim dim 
-        fun n acc = do let (Z:. i:.j) = fromIndex sh n
+        fun acc n = do let (Z:. i:.j) = fromIndex sh n
                        x <- unsafeRead arr n
                        y <- unsafeRead arr acc
                        return $  if i < j then if (abs x > abs y) then n else acc
