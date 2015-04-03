@@ -187,12 +187,10 @@ list2ArrDIM1 ::VU.Unbox a => Int -> [a] -> Array U DIM1 a
 list2ArrDIM1 dim !list = R.fromListUnboxed (Z:. dim :: DIM1) list
         
 vec2Diagonal :: Array U DIM1 Double -> Array U DIM2 Double
-vec2Diagonal vec = computeUnboxedS $ fromFunction (Z:.dim :. dim)
-   (\(Z:. i:. j) -> case i == j of
-                         True -> vec ! (Z:. i)
-                         False -> 0.0)
-
-  where (Z:.dim) = R.extent vec
+vec2Diagonal vec = computeUnboxedS $ fromFunction (Z:.dim :. dim) $
+ \(Z:. i:. j) -> if i == j then  vec ! (Z:. i) else 0
+ 
+ where (Z:.dim) = R.extent vec
 
 
 -- ===================> Triangular Matrices <====================

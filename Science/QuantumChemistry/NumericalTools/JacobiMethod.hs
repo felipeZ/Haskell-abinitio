@@ -29,7 +29,8 @@ data Parameters = Parameters !Double !Double !Double deriving Show
 -- ============================> <======================
    
 jacobiP :: Monad m => Matrix -> m (VecUnbox,Matrix)
-jacobiP !arr = liftM (second (R.fromUnboxed sh) . sortEigenData . second toUnboxed) $
+jacobiP !arr = liftM (second (R.fromUnboxed sh) . sortEigenData .
+                             second toUnboxed) $
                  loopJacobi arr ide 0 (1.0e-9)  
   where sh = extent arr
         ide = identity sh

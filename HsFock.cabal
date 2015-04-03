@@ -139,6 +139,7 @@ executable testJacobi
     -funfolding-keeness-factor1000
     -fllvm
     -optlo-O3
+    -eventlog
     -threaded
 
   build-depends:

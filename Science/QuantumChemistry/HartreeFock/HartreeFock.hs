@@ -36,13 +36,14 @@ import qualified Data.Vector.Unboxed as VU
 import Text.Printf
 
 
+
 -- internal Modules
 import Science.QuantumChemistry.HartreeFock.BasisOrthogonalization
 import Science.QuantumChemistry.NumericalTools.Boys(boysF)
 import Science.QuantumChemistry.HartreeFock.DIIS
 import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.HartreeFock.IntegralsEvaluation
-import Science.QuantumChemistry.NumericalTools.JacobiMethod (jacobiP)
+import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra
 import Science.QuantumChemistry.ConcurrencyTools.Logger
 
@@ -62,17 +63,19 @@ import Science.QuantumChemistry.ConcurrencyTools.Logger
 scfHF ::  [AtomData] -> Charge -> (String -> IO ()) -> IO (HFData)
 scfHF atoms charge logger = do
         let repulsionN = nuclearRep atoms
+            zeros      = flattenZero $  sum . fmap (length . getBasis) $ atoms
             occupied = floor . (/2) . (subtract charge) . sum $  fmap (getZnumber) atoms
             dataDIIS = DataDIIS [] [] 5
         integrals <- calcIntegrals atoms
-        core <- hcore atoms
-        s <- mtxOverlap $ atoms
-        xmatrix <- symmOrtho <=< triang2DIM2 $ s
-        eig <- jacobiP <=< triang2DIM2 $ s
+        core      <- hcore atoms
+        s         <- mtxOverlap $ atoms
+        xmatrix   <- symmOrtho <=< triang2DIM2 $ s
         density <- harrisFunctional core xmatrix integrals occupied
-        logger $ show eig
-        scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 100 OFF logger
+        scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 20 OFF logger
+--        scfDIIS atoms dataDIIS core initialDen s xmatrix integrals repulsionN occupied 0 20 OFF logger
 
+-- initialDen :: FlattenChargeDensity 
+-- initialDen = list2ArrDIM1 28 $ fmap (2*) [0.105265E+01,-0.220413,0.444059E-01,0,0.313997E-01,-0.158847E-01,-0.158847E-01,0.969671,-0.252378,0,-0.178458, -0.911638E-02, -0.911638E-02,0.547867,0,0.133071,0.394565,0.345804,1,0,0,0,0.453771,0.352830,-0.804102E-01,0.295819,-0.955699E-01,0.295819 ]
         
 -- | Driver to run the DIIS procedure        
 scfDIIS :: [AtomData]
@@ -91,25 +94,26 @@ scfDIIS :: [AtomData]
      -> IO(HFData)
 scfDIIS !atoms !dataDIIS !core !oldDensity !overlapMtx !xmatrix !integrals
         !repulsionN !occupied step maxStep switch logger
-   | step < maxStep = do
+  | step < maxStep = do
        logger $ printf "Iteration number: %d\n" step
        currentFock <- fock atoms core oldDensity integrals
-       errorMtx <- calcErrorMtx currentFock overlapMtx oldDensity xmatrix
-       (fockDIIS,newDIIS,newSwitch) <- diisDriver errorMtx currentFock dataDIIS step switch
+       errorMtx    <- calcErrorMtx currentFock overlapMtx oldDensity xmatrix
+       (fockDIIS,newDIIS,newSwitch)       <- diisDriver errorMtx currentFock dataDIIS step switch
        (moCoeff, newDensity, orbEnergies) <- diagonalHF fockDIIS xmatrix occupied
        etotal <- fmap (+repulsionN) $ variationalE core fockDIIS newDensity
        let diisThreshold = 1.0e-8
            bool =  if step /= 0 then convergeDIIS errorMtx diisThreshold else False
            newHFData = HFData fockDIIS moCoeff newDensity orbEnergies etotal
-       if bool then do
-                    logger $ printf "total Energy: %.8f\n" $ getEnergy newHFData
-                    return newHFData
+       logger $ printf "New Density:\n%s\n\n" $ show newDensity
+       logger $ printf "FockDIIS: \n%s\n\n" $ show fockDIIS
+       logger $ printf "total Energy: %.8f\n" $ etotal
+       if bool then  return newHFData
                else do
-                    logger $ printf "total Energy: %.8f\n" $ getEnergy newHFData
                     scfDIIS atoms newDIIS core newDensity overlapMtx
                             xmatrix integrals repulsionN occupied (step+1) maxStep newSwitch logger 
 
-   | otherwise =  error "SCF maxium steps exceeded"
+  | otherwise =  error "SCF maxium steps exceeded"
+
 
 -- ==========================> <===========================
 -- | Initial Density Guess Using the Harris Functional 
@@ -162,7 +166,7 @@ calcIntegrals !atoms = evalIntbykey atoms cartProd
           guard (condition xs)
           return $ [i,j,k,l]
         condition = \e -> case compare e $ sortKeys e of
-                               EQ -> True
+                               EQ        -> True
                                otherwise -> False                               
 
 -- ============> Density Matrix <=================
@@ -245,7 +249,7 @@ diagonalHF :: Monad m => FlattenFock ->
                          m (MOCoefficients,FlattenChargeDensity,EigenValues)
 diagonalHF !fock1 !xmatrix !occupied = do
         fDIM2          <- unitaryTransf xmatrix fock1
-        (orbEs,coeff)  <- jacobiP fDIM2
+        let (orbEs,coeff) = eigenSolve fDIM2
         newCoeff       <- mmultP xmatrix coeff
         newDensity     <- calcDensity newCoeff occupied
         return $ (newCoeff, newDensity, orbEs)
@@ -254,10 +258,23 @@ diagonalHF !fock1 !xmatrix !occupied = do
                   
 -- | Hartree-Fock total energy
 variationalE ::Monad m => FlattenCore -> FlattenFock -> FlattenChargeDensity  -> m Double
-variationalE !core !fockMtx !oldDensity = do
-  sumHF <- R.computeUnboxedP $ core +^ fockMtx
-  result <- mmultFlattenP oldDensity sumHF
-  return $ 0.5 * (trace result)
+variationalE core fockMtx newDensity = return $ (0.5*) $ sumAllS $ fromFunction (ix2 dim dim ) $
+ \(Z:.i :. j ) -> let uv = ix1 $ indexDIM2toFlat dim i j 
+                      vu = ix1 $ indexDIM2toFlat dim j i
+                      pvu = newDensity ! vu 
+                      huv = core ! uv
+                      fuv = fockMtx ! uv                     
+                  in pvu * (huv + fuv) 
+
+ where dim    = dimTriang d 
+       (Z:.d) = extent core
+
+
+-- variationalE core fockMtx newDensity = do
+--   sumHF <- R.computeUnboxedP $ core +^ fockMtx
+--   result <- mmultFlattenP newDensity sumHF
+--   return $ 0.5 * (trace result)
+
 {-# INLINE variationalE #-}
 
 -- | Function to check convergency

@@ -2,6 +2,7 @@
 module Science.QuantumChemistry.NumericalTools where
 
 import Science.QuantumChemistry.NumericalTools.Boys 
+import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
 import Science.QuantumChemistry.NumericalTools.GaussElimination
 import Science.QuantumChemistry.NumericalTools.JacobiMethod   (jacobiP)
 import Science.QuantumChemistry.NumericalTools.JacobiMethodST (jacobiST)

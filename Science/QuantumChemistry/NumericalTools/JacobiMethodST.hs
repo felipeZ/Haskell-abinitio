@@ -111,8 +111,6 @@ rotateP prr kl@(Z:. k :. l) (Parameters !s !t !tau) dim funIdx =  do
 
   where uwrite idx = unsafeWrite prr (funIdx idx)
         uread      = unsafeRead prr . funIdx
-
-
 {-# Inline rotateP #-}                     
 
 calcParameters ::  Double -> Double -> Parameters                 
