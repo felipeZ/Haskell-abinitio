@@ -1,8 +1,8 @@
 
 -- The thing...
 -- A system shell for the HaskellFock SCF Project 
--- @2012,2013 Angel Alvarez Adhesive tape
--- @2012,2013 Felipe Zapata core SCF machinery 
+-- @2012-2015 Angel Alvarez Adhesive tape
+-- @2012-2015 Felipe Zapata core SCF machinery 
 
 
 module Science.QuantumChemistry.HsFock.Main where
@@ -43,7 +43,7 @@ progName = "HaskellFock SCF project , Version:" ++ currVersion ++ " "
         currVersion :: String
         currVersion = showVersion HsApp.version
 
-progAuthors = "@2013 Felipe Zapata, Angel Alvarez, Alessio Valentini"
+progAuthors = "@2015 Felipe Zapata, Angel Alvarez, Alessio Valentini"
 
 -- default options
 defaultOptions    = Options

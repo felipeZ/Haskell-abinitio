@@ -27,23 +27,29 @@ import Control.Applicative
 import Control.Arrow ((&&&))
 import Control.Monad.List(guard)
 import Control.Monad (liftM,(<=<))
+import Control.Parallel.Strategies (parList,rseq,using)
 import Data.Array.Repa         as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix as R
-import qualified Data.List as DL
+import qualified Data.List as L
 import qualified Data.Map as M
+import qualified Data.Sequence as S
 import qualified Data.Vector.Unboxed as VU
 import Text.Printf
 
 
 
 -- internal Modules
-import Science.QuantumChemistry.HartreeFock.BasisOrthogonalization
-import Science.QuantumChemistry.NumericalTools.Boys(boysF)
-import Science.QuantumChemistry.HartreeFock.DIIS
+import Science.QuantumChemistry.HartreeFock.BasisOrthogonalization (symmOrtho)
+import Science.QuantumChemistry.NumericalTools.Boys                (boysF)
+import Science.QuantumChemistry.HartreeFock.DIIS                   (DataDIIS(..)
+                                                                   ,calcErrorMtx
+                                                                   ,diis
+                                                                   ,diisDriver
+                                                                   ,convergeDIIS)             
 import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.HartreeFock.IntegralsEvaluation
-import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
+import Science.QuantumChemistry.NumericalTools.EigenValues         (eigenSolve)
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra
 import Science.QuantumChemistry.ConcurrencyTools.Logger
 
@@ -64,19 +70,16 @@ scfHF ::  [AtomData] -> Charge -> (String -> IO ()) -> IO (HFData)
 scfHF atoms charge logger = do
         let repulsionN = nuclearRep atoms
             zeros      = flattenZero $  sum . fmap (length . getBasis) $ atoms
-            occupied = floor . (/2) . (subtract charge) . sum $  fmap (getZnumber) atoms
-            dataDIIS = DataDIIS [] [] 5
-        integrals <- calcIntegrals atoms
+            occupied   = floor . (/2) . (subtract charge) . sum 
+                                $ fmap (getZnumber) atoms
+            dataDIIS   = DataDIIS S.empty S.empty 5
+            integrals  = calcIntegrals atoms
         core      <- hcore atoms
         s         <- mtxOverlap $ atoms
         xmatrix   <- symmOrtho <=< triang2DIM2 $ s
-        density <- harrisFunctional core xmatrix integrals occupied
+        density   <- harrisFunctional core xmatrix integrals occupied
         scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 20 OFF logger
---        scfDIIS atoms dataDIIS core initialDen s xmatrix integrals repulsionN occupied 0 20 OFF logger
 
--- initialDen :: FlattenChargeDensity 
--- initialDen = list2ArrDIM1 28 $ fmap (2*) [0.105265E+01,-0.220413,0.444059E-01,0,0.313997E-01,-0.158847E-01,-0.158847E-01,0.969671,-0.252378,0,-0.178458, -0.911638E-02, -0.911638E-02,0.547867,0,0.133071,0.394565,0.345804,1,0,0,0,0.453771,0.352830,-0.804102E-01,0.295819,-0.955699E-01,0.295819 ]
-        
 -- | Driver to run the DIIS procedure        
 scfDIIS :: [AtomData]
      -> DataDIIS
@@ -100,8 +103,8 @@ scfDIIS !atoms !dataDIIS !core !oldDensity !overlapMtx !xmatrix !integrals
        errorMtx    <- calcErrorMtx currentFock overlapMtx oldDensity xmatrix
        (fockDIIS,newDIIS,newSwitch)       <- diisDriver errorMtx currentFock dataDIIS step switch
        (moCoeff, newDensity, orbEnergies) <- diagonalHF fockDIIS xmatrix occupied
-       etotal <- fmap (+repulsionN) $ variationalE core fockDIIS newDensity
-       let diisThreshold = 1.0e-8
+       let etotal =  (+repulsionN) $ variationalE core fockDIIS newDensity
+           diisThreshold = 1.0e-7
            bool =  if step /= 0 then convergeDIIS errorMtx diisThreshold else False
            newHFData = HFData fockDIIS moCoeff newDensity orbEnergies etotal
        logger $ printf "New Density:\n%s\n\n" $ show newDensity
@@ -120,7 +123,7 @@ scfDIIS !atoms !dataDIIS !core !oldDensity !overlapMtx !xmatrix !integrals
 harrisFunctional :: Monad m => FlattenCore -> TransformMatrix -> Integrals -> OccupiedShells -> m FlattenChargeDensity
 harrisFunctional !fcore !xmatrix !integrals !occupied = do
   let (Z :. dim) = extent fcore
-  guess <- computeGuessIntegrals integrals occupied dim
+  guess     <- computeGuessIntegrals integrals occupied dim
   fockGuess <- computeUnboxedP $ fcore +^ guess
   (_,flattenChargeDensity,_) <- diagonalHF fockGuess xmatrix occupied
   return flattenChargeDensity
@@ -149,13 +152,13 @@ computeGuessIntegrals  !integrals !occupied !dim =
    Besides, it is provided a function for sorting the keys using the symmetry properties of the Integrals.-}
 
 sortKeys :: [Int] -> [Int]
-sortKeys [i,j,k,l] = let l1 =DL.sort [i,j]
-                         l2 =DL.sort [k,l]
-                     in if l1 <=l2 then l1 DL.++ l2 else l2 DL.++ l1
+sortKeys [i,j,k,l] = let l1 = L.sort [i,j]
+                         l2 = L.sort [k,l]
+                     in if l1 <= l2 then l1 L.++ l2 else l2 L.++ l1
                                               
 -- | Compute the electronic integrals                                 
-calcIntegrals :: Monad m => [AtomData] -> m (Array U DIM1 Double)
-calcIntegrals !atoms = evalIntbykey atoms cartProd
+calcIntegrals :: [AtomData] -> Array U DIM1 Double
+calcIntegrals !atoms = evalIntbykey atoms (cartProd `using` parList rseq)
   where dim = pred . sum . fmap (length . getBasis) $ atoms
         cartProd = do
           i <- [0..dim]
@@ -187,7 +190,7 @@ calcDensity !arr !occupied =
                       v2 = R.slice arr (Any :. l :. All)
                       p1 = R.extract (Z:.0) (Z :. occupied) v1
                       p2 = R.extract (Z:.0) (Z :. occupied) v2
-                  in (*2) . R.sumAllS $ R.zipWith (*) p1 p2)
+                  in (*2) . R.sumAllS $ p1 *^ p2)
 {-# INLINE calcDensity #-}
                   
 -- ==================================> CALCULATED THE FOCK MATRIX <======================================          
@@ -210,7 +213,7 @@ calcGmatrix :: Monad m
                -> FlattenChargeDensity
                -> Integrals
                -> m (Array U DIM1 Double)
-calcGmatrix !atoms !density !integrals =
+calcGmatrix atoms density integrals =
   computeUnboxedP $ fromFunction (Z:. flat) $
                   \(Z :. i ) ->  sumAllS $
                   fromFunction (Z :. nshells) $
@@ -253,12 +256,12 @@ diagonalHF !fock1 !xmatrix !occupied = do
         newCoeff       <- mmultP xmatrix coeff
         newDensity     <- calcDensity newCoeff occupied
         return $ (newCoeff, newDensity, orbEs)
-        
+{-# INLINE diagonalHF #-}                
                    
                   
 -- | Hartree-Fock total energy
-variationalE ::Monad m => FlattenCore -> FlattenFock -> FlattenChargeDensity  -> m Double
-variationalE core fockMtx newDensity = return $ (0.5*) $ sumAllS $ fromFunction (ix2 dim dim ) $
+variationalE :: FlattenCore -> FlattenFock -> FlattenChargeDensity -> Double
+variationalE core fockMtx newDensity = (0.5*) $ sumAllS $ fromFunction (ix2 dim dim ) $
  \(Z:.i :. j ) -> let uv = ix1 $ indexDIM2toFlat dim i j 
                       vu = ix1 $ indexDIM2toFlat dim j i
                       pvu = newDensity ! vu 
@@ -270,12 +273,6 @@ variationalE core fockMtx newDensity = return $ (0.5*) $ sumAllS $ fromFunction 
        (Z:.d) = extent core
 
 
--- variationalE core fockMtx newDensity = do
---   sumHF <- R.computeUnboxedP $ core +^ fockMtx
---   result <- mmultFlattenP newDensity sumHF
---   return $ 0.5 * (trace result)
-
-{-# INLINE variationalE #-}
 
 -- | Function to check convergency
 converge :: FlattenChargeDensity -> FlattenChargeDensity -> Bool
@@ -291,7 +288,7 @@ nuclearRep :: [AtomData] -> Double
 nuclearRep xs = sum [repulsion atomi atomj | atomi <- xs, atomj <- xs, atomj > atomi]
   where dim = pred . length $ xs
         repulsion at1 at2 = let ([za,zb],[ra,rb]) = fmap getZnumber &&& (fmap getCoord) $ [at1,at2]
-                                rab = sqrt . sum . fmap (^2) $ DL.zipWith (-) ra rb
+                                rab = sqrt . sum . fmap (^2) $ L.zipWith (-) ra rb
                             in za*zb/rab
 
 

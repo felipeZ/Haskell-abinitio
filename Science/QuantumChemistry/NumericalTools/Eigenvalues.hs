@@ -5,13 +5,12 @@ module Science.QuantumChemistry.NumericalTools.EigenValues (
 
 import Control.Arrow ((***))
 import Data.Array.Repa as R
-import Numeric.LinearAlgebra.HMatrix (eigSH')
 import qualified Data.Packed.Vector as HV
 import qualified Data.Packed.Matrix as HM
 
-import Data.Array.Repa as R
 import Data.Vector.Storable (convert)
 import qualified Data.Vector.Unboxed as U
+import Numeric.LinearAlgebra.HMatrix (eigSH')
 
 
 -- -----------------> Internal Modules <----------

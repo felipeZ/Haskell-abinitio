@@ -83,9 +83,7 @@ mmultFlattenP !arr !brr =
    do   computeUnboxedP
          $ fromFunction (Z :. dim :. dim)
          $ \(Z:. i:. j) ->  R.sumAllS
-                            $ R.zipWith (*)
-                              (rowFlattenArray arr i)
-                              (rowFlattenArray brr j)
+                            $ (rowFlattenArray arr i) *^ (rowFlattenArray brr j)
 
   where (Z:. h1) = extent arr
         dim =  dimTriang h1
@@ -97,9 +95,7 @@ mmultFlattenS !arr !brr =
    do   computeUnboxedS
          $ fromFunction (Z :. dim :. dim)
          $ \(Z:. i:.j ) ->   R.sumAllS
-                             $ R.zipWith (*)
-                               (rowFlattenArray arr i)
-                               (rowFlattenArray brr j)
+                             $ (rowFlattenArray arr i) *^ (rowFlattenArray brr j)
 
   where (Z:. h1) = extent arr
         dim =  dimTriang h1
@@ -110,10 +106,9 @@ mmultDIM2FlattenP :: Monad m => Array U DIM2 Double -> Array U DIM1 Double -> m 
 mmultDIM2FlattenP !arr !flat =
    do   computeUnboxedP
          $ fromFunction (Z :. dim :. dim)
-         $ \ix@(Z:. i:.j) -> R.sumAllS
-                             $ R.zipWith (*)
-                             (unsafeSlice arr (Any :. (row ix) :. All))
-                             (rowFlattenArray flat j)
+         $ \ix@(Z:. i:.j) -> let xs = unsafeSlice arr (Any :. (row ix) :. All)
+                                 ys = rowFlattenArray flat j
+                             in R.sumAllS $  xs *^ ys 
 
   where (Z:. dim :. _) = extent arr
 {-# NOINLINE mmultDIM2FlattenP #-}
@@ -124,10 +119,9 @@ mmultFlattenDIM2P !flat !brr = do
    trr <- transpose2P brr
    computeP
      $ fromFunction (Z :. dim :. dim)
-     $ \ix@(Z:. i:.j) -> R.sumAllS
-                         $ R.zipWith (*)
-                         (rowFlattenArray flat i)
-                         (unsafeSlice trr (Any :. (col ix) :. All))
+     $ \ix@(Z:. i:.j) -> let xs = rowFlattenArray flat i
+                             ys = unsafeSlice trr (Any :. (col ix) :. All)
+                         in R.sumAllS $ xs *^ ys 
 
   where (Z:. dim:. _) = extent brr
 {-# NOINLINE mmultFlattenDIM2P #-}
@@ -171,13 +165,11 @@ identity dim = R.computeUnboxedS $ R.fromFunction (ix2 dim dim) $
 
 -- zero matrix  
 zero :: Int -> Array U DIM2 Double
-zero dim = R.computeUnboxedS $ R.fromFunction (Z:. dim:. dim)
-           $ (\sh -> 0.0)
+zero dim = R.computeUnboxedS $ R.fromFunction (Z:. dim:. dim) $ \sh -> 0
 
 -- zero matrix represented as a flatten matrix           
 flattenZero :: Int -> Array U DIM1 Double
-flattenZero n = R.computeUnboxedS $ R.fromFunction (Z:. dim)
-                $ (\sh -> 0.0)
+flattenZero n = R.computeUnboxedS $ R.fromFunction (Z:. dim) $ \sh -> 0
   where dim = (n^2 +n) `div`2              
 
 list2ArrDIM2 ::VU.Unbox a => Int -> [a] -> Array U DIM2 a
@@ -193,8 +185,7 @@ vec2Diagonal vec = computeUnboxedS $ fromFunction (Z:.dim :. dim) $
  where (Z:.dim) = R.extent vec
 
 
--- ===================> Triangular Matrices <====================
-
+-- ===================> Triangular Matrices Indexes <====================
 
 takeZero :: Int -> [Int] -> [Int]
 takeZero !n !xs | null xs   = [] 
@@ -242,7 +233,7 @@ vector2Matrix !n !list = [fmap (\i -> list !! (xs+i) ) [0..pred n] | xs <- xss]
 
 -- | Function to transform the indexes of a flatten upper triangular matrix to its equivalent
 --   symmetric square matrix
-indexFlat2DIM2 :: Int -> DIM1 -> DIM2 --
+indexFlat2DIM2 :: Int -> DIM1 -> DIM2 
 indexFlat2DIM2  !dim  (Z:.i) = ix2 x y
   where x = f i 0
         y = g i x
@@ -255,8 +246,7 @@ indexFlat2DIM2  !dim  (Z:.i) = ix2 x y
 indexDIM2toFlat :: Int -> Int -> Int -> Int 
 indexDIM2toFlat !dim !x !y | x <= y = calcElem x + (y-x)
                            | otherwise = calcElem y + (x-y)
-  where calcElem w = sum . takeZero w $ iterate pred dim
-        
+  where calcElem w = sum . takeZero w $ iterate pred dim        
 
 sumIndexTriang:: Int -> Int
 sumIndexTriang !n = (n^2 + n) `div` 2
