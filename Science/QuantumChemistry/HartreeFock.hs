@@ -5,5 +5,6 @@ import Science.QuantumChemistry.HartreeFock.BasisOrthogonalization
 import Science.QuantumChemistry.HartreeFock.Derivatives
 import Science.QuantumChemistry.HartreeFock.DIIS
 import Science.QuantumChemistry.HartreeFock.HartreeFock
-import Science.QuantumChemistry.HartreeFock.IntegralsEvaluation
+
+
     

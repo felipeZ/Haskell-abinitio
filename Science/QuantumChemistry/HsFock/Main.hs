@@ -106,34 +106,29 @@ acceptedOptions =
 --     print "Final Fock Matrix"
 --     print $ getFock result
 
+
 -- doSCF :: Options -> IO ()
 -- doSCF optsR = do
+--     logger <- initLogger "CO_sto_3g.out"
 --     let projectdata = project "CO" "STO-3G"
 --         charge = 0
 --         atom1 = AtomData r1 baseO  8.0
 --         atom2 = AtomData r2 baseC  6.0
 --         [r1, r2] = atomList projectdata
 --         [baseO,baseC] = pBasis projectdata
---     putStrLn "Starting main SCF calculations, please wait...."
---     putStrLn "number of shells"
---     print .  sum . fmap (length . getBasis) $ [atom1,atom2]
---     putStrLn "overlap"
---     overlap <- mtxOverlap [atom1,atom2]
---     print overlap
---     print "Hcore"
---     core <- hcore [atom1,atom2]
---     print core
---     result <- scfHF [atom1,atom2] charge
---     print "HF"
---     print $ getEnergy result
---     print "Final Density"
---     print $ getDensity result
---     print "Orbital Energy"
---     print $ getOrbE result
---     print "Final Coeeficients"
---     print $ getCoeff result
---     print "Final Fock Matrix"
---     print $ getFock result
+--     logMessage logger "Starting main SCF calculations, please wait....\n"
+--     logMessage logger "number of shells: "
+--     logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2]
+--     hartreeData <- scfHF [atom1,atom2] charge $ logMessage logger
+--     logMessage logger "Hartree-Fock has succeeded !!!\n"
+--     logMessage logger "HF\n"
+--     logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
+--     -- logMessage logger "Calculating the gradient\n"
+--     -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
+--     -- logMessage logger $ show gradient
+--     logMessage logger "The answer is 42!!"
+--     logStop logger
+
 
 -- doSCF :: Options -> IO ()
 -- doSCF optsR = do
