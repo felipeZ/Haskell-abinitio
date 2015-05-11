@@ -73,27 +73,12 @@ scfHF atoms charge logger = do
             occupied   = floor . (/2) . (subtract charge) . sum 
                                 $ fmap (getZnumber) atoms
             dataDIIS   = DataDIIS S.empty S.empty 5
-            integrals  = calcIntegrals atoms
-        logger $ printf "Integrals:\n%s\n" $ show  $ zip cartProd $ toList integrals 
+        let integrals  = calcIntegrals atoms
         core      <- hcore atoms
         s         <- mtxOverlap $ atoms
         xmatrix   <- symmOrtho <=< triang2DIM2 $ s
         density   <- harrisFunctional core xmatrix integrals occupied
         scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 20 OFF logger
-
-  where dim = pred . sum . fmap (length . getBasis) $ atoms
-        condition = \e -> case compare e $ sortKeys e of
-                               EQ        -> True
-                               otherwise -> False
-        cartProd = do
-          i <- [0..dim]
-          j <- [i..dim]
-          k <- [i..dim]
-          l <- [k..dim]
-          let xs = [i,j,k,l]
-          guard (condition xs)
-          return $ [i,j,k,l]
-
 
 -- | Driver to run the DIIS procedure        
 scfDIIS :: [AtomData]
@@ -172,7 +157,7 @@ sortKeys [i,j,k,l] = let l1 = L.sort [i,j]
                      in if l1 <= l2 then l1 L.++ l2 else l2 L.++ l1
                                               
 -- | Compute the electronic integrals                                 
-calcIntegrals :: [AtomData] -> Array U DIM1 Double
+calcIntegrals ::  [AtomData] -> Array U DIM1 Double
 calcIntegrals atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval (cartProd `using` parList rseq)
 
   where dim     = pred . sum . fmap (length . getBasis) $ atoms

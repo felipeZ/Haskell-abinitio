@@ -33,7 +33,7 @@ import Data.Array.Repa         as R hiding (map)
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix (mmultP)
 import Data.List as L
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..),mappend,mconcat,mempty)
 import qualified Data.Vector.Unboxed as U
@@ -294,77 +294,49 @@ contracted4Centers [(ra,cgf1), (rb,cgf2), (rc,cgf3), (rd,cgf4)] = sum cartProd
           let gauss = L.zipWith3 Gauss [ra,rb,rc,rd] [l1,l2,l3,l4] [g1,g2,g3,g4]
               [f1,f2,f3,f4] = L.map funtype gauss
               [ga,gb,gc,gd] = gauss
---          guard $ schwarz gauss 
-          return $ if ( ga == gc) && (gb == gd) 
-                      then twoTermsERI ga gb
-                      else twoElectronHermite gauss
+          guard $ schwarz gauss 
+          return $ twoElectronHermite gauss
 
 schwarz :: [Gauss] -> Bool 
-schwarz gs@[g1,g2,g3,g4] =  True -- if val < 1e-8 then False else True 
+schwarz gs@[g1,g2,g3,g4] =  if val < 1e-8 then False else True 
  
  where val = qab * qcd  
        qab = sqrt $ twoTermsERI g1 g2
        qcd = sqrt $ twoTermsERI g3 g4
 
-
+-- | integral of the form (ab|ab) only depend on the expansion coefficient of the
+-- | hermite expanstion because the derivatives of the boys function are equal to 0
 twoTermsERI :: Gauss -> Gauss -> Double
-twoTermsERI ga gb = 
-  case L.map funtype gs of 
-       [S,S ]    -> sTypeIntegral 0 g1 g2
-       -- [S,Px]    -> twoTerms_SP 0 g1 g2  
-       -- [S,Py]    -> twoTerms_SP 1 g1 g2  
-       -- [S,Pz]    -> twoTerms_SP 2 g1 g2
-       -- [Px,Px]   -> twoTerms_PP 0 0 g1 g2
-       -- [Px,Py]   -> twoTerms_PP 0 1 g1 g2
-       -- [Px,Pz]   -> twoTerms_PP 0 2 g1 g2
-       -- [Py,Py]   -> twoTerms_PP 1 1 g1 g2      
-       -- [Py,Pz]   -> twoTerms_PP 1 2 g1 g2
-       -- [Pz,Pz]   -> twoTerms_PP 2 2 g1 g2
-       -- [Dxx,S]   -> twoTerms_DS 0 0 g1 g2 
-       -- [Dxy,S]   -> twoTerms_DS 0 0 g1 g2 
-       -- [Dxz,S]   -> twoTerms_DS 0 0 g1 g2 
-       -- [Dyy,S]   -> twoTerms_DS 0 0 g1 g2 
-       -- [Dyz,S]   -> twoTerms_DS 0 0 g1 g2 
-       -- [Dzz,S]   -> twoTerms_DS 0 0 g1 g2 
-        
--- Dxx | Dxy | Dxz | Dyy | Dyz | Dzz 
-       otherwise -> twoElectronHermite [g1,g2,g1,g2]
+twoTermsERI ga gb =  (*cte) . U.sum $ U.map (*suma) coeff 
+
+  where suma              = U.sum $ U.zipWith (*) sgns coeff
+        gs                = [ga,gb]
+        coeff             = U.unfoldr (calcHermCoeff [rpa,rpb] p) seedC       
+        tuvs              = map getijt $ genCoeff_Integral [symb1,symb2] derv
+        seedC             = initilized_Seed_Coeff [symb1,symb2] rab mu
+        sgns              = U.fromList . map (\xs-> (-1.0)^(sum xs)) $ tuvs
+        [ra,rb]           = map nucCoord gs
+        [symb1,symb2]     = map funtype  gs
+        ([c1,c2],[e1,e2]) = (map fst ) &&& (map snd ) $ map gaussP gs
+        p                 = e1 + e2
+        rp                = meanp (e1,e2) ra rb
+        [rab,rpa,rpb]     = map restVect  (zip [ra,rp,rp] [rb,ra,rb])
+        mu                = e1*e2* (recip $ e1 + e2)
+        cte               = (c1^2 * c2^2 ) * (sqrt $ (pi/(2*p))^5)
+        derv              = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
 
 
-  where gs@[g1,g2]          = L.sortBy compareAngularM [ga,gb]
-        compareAngularM x y = let [f1,f2] = L.map funtype [x,y]
-                              in  compare f1 f2 
-                               
-twoTerms_SP :: Int -> Gauss -> Gauss -> Double
-twoTerms_SP i gS gP = (rP !! i) * (sTypeIntegral 1 gS gP)
-   where rP = nucCoord gP
-
-twoTerms_PP :: Int -> Int -> Gauss -> Gauss -> Double
-twoTerms_PP i j g1 g2 = negate (xa* xb * (sTypeIntegral 2 g1 g2)) + dij 
-
-  where dij     = deltaij i j $ sTypeIntegral 1 g1 g2  
-        [ra,rb] = L.map nucCoord [g1,g2]
-        xa      = ra !! i
-        xb      = rb !! j  
-
-
-sTypeIntegral ::  Int -> Gauss -> Gauss -> Double 
-sTypeIntegral ordIntegral g1@(Gauss r1 angFun1 (c1,e1)) g2@(Gauss r2 angFun2 (c2,e2)) =         
-  (g1 <||> g2)^2 * (sqrt $ 2 * sigmaM / pi)
- 
-  where sigmaM = (e1+e2)^(2*m+1)
-        m      = ordIntegral
 
 twoElectronHermite :: [Gauss] -> Double
 twoElectronHermite gs = (cte *) . U.sum . U.zipWith (*) coeff1 $!! U.fromList
                         [mcMurchie2 coeff2 rpq alpha abcs tuv | tuv <- coefftuv]
 
   where coefftuv = genCoeff_Integral [symb1,symb2] derv
-        abcs =  genCoeff_Integral [symb3,symb4] derv
-        coeff1 = U.unfoldr (calcHermCoeff [rpa,rpb] p) seedC1
-        coeff2 = U.unfoldr (calcHermCoeff [rqc,rqd] q) seedC2
-        seedC1 = initilized_Seed_Coeff [symb1,symb2] rab mu
-        seedC2 = initilized_Seed_Coeff [symb3,symb4] rcd nu
+        abcs     = genCoeff_Integral [symb3,symb4] derv
+        coeff1   = U.unfoldr (calcHermCoeff [rpa,rpb] p) seedC1
+        coeff2   = U.unfoldr (calcHermCoeff [rqc,rqd] q) seedC2
+        seedC1   = initilized_Seed_Coeff [symb1,symb2] rab mu
+        seedC2   = initilized_Seed_Coeff [symb3,symb4] rcd nu
         [ra,rb,rc,rd] = map nucCoord gs
         [symb1,symb2,symb3,symb4] = map funtype  gs
         ps = map gaussP gs
