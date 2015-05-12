@@ -27,7 +27,7 @@ import Control.Applicative
 import Control.Arrow ((&&&))
 import Control.Monad.List(guard)
 import Control.Monad (liftM,(<=<))
-import Control.Parallel.Strategies (parList,parMap,rdeepseq,rseq,using)
+import Control.Parallel.Strategies 
 import Data.Array.Repa         as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix as R
@@ -158,9 +158,12 @@ sortKeys [i,j,k,l] = let l1 = L.sort [i,j]
                                               
 -- | Compute the electronic integrals                                 
 calcIntegrals ::  [AtomData] -> Array U DIM1 Double
-calcIntegrals atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval (cartProd `using` parList rseq)
+--calcIntegrals atoms = fromListUnboxed (ix1 $ length cartProd) $ parChunks 4 funEval cartProd 
 
-  where dim     = pred . sum . fmap (length . getBasis) $ atoms
+calcIntegrals atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval cartProd 
+
+  where parChunks n f =  withStrategy (parListChunk n rdeepseq ) . L.map f
+        dim     = pred . sum . fmap (length . getBasis) $ atoms
         funEval = evalIntbykey atoms 
         cartProd = do
           i <- [0..dim]

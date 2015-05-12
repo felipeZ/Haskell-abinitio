@@ -51,7 +51,7 @@ boysF 0 x
     | x > 0.0e-5 = 0.5 * sqrt (pi/x) * erf (sqrt x)
     | otherwise  = 1.0
 
-boysF n x = k / d
+boysF n x = k `seq` k / d
     where
         k = kummer a b z 0.1 -- Kummer 1F1
         a = n + 0.5
@@ -65,7 +65,7 @@ boysF n x = k / d
 --     where
 --         a = 1 / ( 2*x )
 --         b = (2*m - 1) * boysF2 (m-1) x - (e ** (-x))
-        e = exp 1
+--         e = exp 1
 -- Bous function backward recurrence as stated on [2]
 -- boysF3 = bF
 --     where
@@ -91,7 +91,7 @@ kummer a b z err = gammaFactor * integralPart
                 | err > 0.01  =  GQI.nIntegrate256
                 | err > 0.001 =  GQI.nIntegrate512
                 | otherwise   = GQI.nIntegrate1024
-
+{- INLINE kummer-}
 
 --  Test values from [2] for various proposed aproximations of the boys Function
 --  Equations 3 and 6

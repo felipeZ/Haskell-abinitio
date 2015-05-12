@@ -33,7 +33,7 @@ import Data.Array.Repa         as R hiding (map)
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix (mmultP)
 import Data.List as L
-import qualified Data.Map.Strict as M
+import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..),mappend,mconcat,mempty)
 import qualified Data.Vector.Unboxed as U
@@ -230,7 +230,6 @@ hcore !atoms  = computeUnboxedP . fromFunction (Z:. dim) $
         norbital  = sum . map (length . getBasis) $ atoms
         dim       = (norbital^2 + norbital) `div`2
         calcIndex = LA.calcCoordCGF atoms
-{- INLINE hcore -}
              
 -- ==================> Kinetic Energy IntegralsEvaluation  <========================
 -- |the kinetic integral for two S-functions is
@@ -295,11 +294,13 @@ contracted4Centers [(ra,cgf1), (rb,cgf2), (rc,cgf3), (rd,cgf4)] = sum cartProd
           let gauss = L.zipWith3 Gauss [ra,rb,rc,rd] [l1,l2,l3,l4] [g1,g2,g3,g4]
               [f1,f2,f3,f4] = L.map funtype gauss
               [ga,gb,gc,gd] = gauss
-          guard $ schwarz gauss 
-          return $ twoElectronHermite gauss
+--          guard $ schwarz gauss 
+          return $ if ( ga == gc) && (gb == gd) 
+                      then twoTermsERI ga gb
+                      else twoElectronHermite gauss
 
 schwarz :: [Gauss] -> Bool 
-schwarz gs@[g1,g2,g3,g4] =  if val < 1e-8 then False else True 
+schwarz gs@[g1,g2,g3,g4] =  True -- if val < 1e-8 then False else True 
  
  where val = qab * qcd  
        qab = sqrt $ twoTermsERI g1 g2
@@ -308,14 +309,15 @@ schwarz gs@[g1,g2,g3,g4] =  if val < 1e-8 then False else True
 -- | integral of the form (ab|ab) only depend on the expansion coefficient of the
 -- | hermite expanstion because the derivatives of the boys function are equal to 0
 twoTermsERI :: Gauss -> Gauss -> Double
-twoTermsERI ga gb =  (*cte) . U.sum $ coeff `deepseq` U.map (*suma) coeff 
+twoTermsERI ga gb = (*cte) . U.sum $ U.zipWith (*) coeff coeff
 
-  where suma              = U.sum $ U.zipWith (*) sgns coeff
-        gs                = [ga,gb]
+                       -- else twoElectronHermite [ga,gb,ga,gb]
+
+  where gs                = [ga,gb]
         coeff             = U.unfoldr (calcHermCoeff [rpa,rpb] p) seedC       
-        tuvs              = map getijt $ genCoeff_Integral [symb1,symb2] derv
+        -- tuvs              = map getijt $ genCoeff_Integral [symb1,symb2] derv
         seedC             = initilized_Seed_Coeff [symb1,symb2] rab mu
-        sgns              = U.fromList . map (\xs-> (-1.0)^(sum xs)) $ tuvs
+        -- sgns              = U.fromList . map (\xs-> (-1.0)^(sum xs)) $ tuvs
         [ra,rb]           = map nucCoord gs
         [symb1,symb2]     = map funtype  gs
         ([c1,c2],[e1,e2]) = (map fst ) &&& (map snd ) $ map gaussP gs
@@ -323,8 +325,21 @@ twoTermsERI ga gb =  (*cte) . U.sum $ coeff `deepseq` U.map (*suma) coeff
         rp                = meanp (e1,e2) ra rb
         [rab,rpa,rpb]     = map restVect  (zip [ra,rp,rp] [rb,ra,rb])
         mu                = e1*e2* (recip $ e1 + e2)
-        cte               = (c1^2 * c2^2 ) * (sqrt $ (pi/(2*p))^5)
+        cte               = (c1^2 * c2^2 ) * (sqrt $ 2 * (pi/p)^5)
         derv              = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
+
+-- | See: Journal of Computational Chemistry, Vol. 21, No. 16, 1505–1510 (2000)
+-- |      INTERNATIONAL JOURNAL OF QUANTUM CHEMISTRY, VOL. 40,145-152 (1991)
+-- | expBra[m]expKet 
+sTypeIntegral :: Int -> Int -> Int -> Gauss -> Gauss -> Double 
+sTypeIntegral expBra expKet ordIntegral g1@(Gauss r1 angFun1 (c1,e1)) g2@(Gauss r2 angFun2 (c2,e2)) =         
+  cte * (g1 <||> g2)^2 * (sqrt $ 2 * sigmaM / pi)
+ 
+  where sigmaM = (e1+e2)^(2*m+1)
+        m      = ordIntegral
+        expBK  = expBra + expKet
+        cte    = (2*e1)^expBK * (2*e2)^expBK / (2*(e1+e2))^expBK
+
 
 
 twoElectronHermite :: [Gauss] -> Double
@@ -337,34 +352,33 @@ twoElectronHermite gs = (cte *) . U.sum . U.zipWith (*) coeff1 $!! U.fromList
         coeff2   = U.unfoldr (calcHermCoeff [rqc,rqd] q) seedC2
         seedC1   = initilized_Seed_Coeff [symb1,symb2] rab mu
         seedC2   = initilized_Seed_Coeff [symb3,symb4] rcd nu
-        ps      = map gaussP gs
-        rp      = meanp (e1,e2) ra rb
-        rq      = meanp (e3,e4) rc rd
-        [mu,nu] = (\(a,b) -> a*b* (recip $ a + b)) `fmap` [(e1,e2),(e3,e4)]
-        [p,q]   = uncurry (+) `fmap` [(e1,e2),(e3,e4)]
-        alpha   = p*q/(p+q)
-        cte     = (c1*c2*c3*c4*) . (*(2.0*pi**2.5)) . recip $ (p * q ) * (sqrt $ p + q)
-        [ra,rb,rc,rd]                 = map nucCoord gs
-        [symb1,symb2,symb3,symb4]     = map funtype  gs
-        [rab,rcd,rpa,rpb,rqc,rqd,rpq] = map restVect  (zip [ra,rc,rp,rp,rq,rq,rp][rb,rd,ra,rb,rc,rd,rq])
+        [ra,rb,rc,rd] = map nucCoord gs
+        [symb1,symb2,symb3,symb4] = map funtype  gs
+        ps = map gaussP gs
         ([c1,c2,c3,c4],[e1,e2,e3,e4]) = (map fst ) &&& (map snd ) $ ps
+        rp = meanp (e1,e2) ra rb
+        rq = meanp (e3,e4) rc rd
+        [rab,rcd,rpa,rpb,rqc,rqd,rpq] = map restVect  (zip [ra,rc,rp,rp,rq,rq,rp][rb,rd,ra,rb,rc,rd,rq])
+        [mu,nu] = (\(a,b) -> a*b* (recip $ a + b)) `fmap` [(e1,e2),(e3,e4)]
+        [p,q] = uncurry (+) `fmap` [(e1,e2),(e3,e4)]
+        alpha = p*q/(p+q)
+        cte = (c1*c2*c3*c4*) . (*(2.0*pi**2.5)) . recip $ (p * q ) * (sqrt $ p + q)
         derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
 
 
 mcMurchie2 :: VecUnbox -> NucCoord -> Double -> [HermiteIndex] -> HermiteIndex -> Double
-mcMurchie2 !coeff2 rpq alpha abcs' tuv' = U.sum $ integrals `deepseq` U.zipWith3 (\x y z -> x*y*z) sgns coeff2  integrals
-  where tuv       = getijt tuv'
-        abcs      = map getijt  abcs'
-        sgns      = U.fromList $ map (\xs-> (-1.0)^(sum xs)) abcs
+mcMurchie2 coeff2 rpq alpha abcs' tuv' = U.sum $!!  U.zipWith3 (\x y z -> x*y*z) sgns coeff2  integrals
+  where tuv = getijt tuv'
+        abcs = map getijt  abcs'
+        sgns = U.fromList $ map (\xs-> (-1.0)^(sum xs)) abcs
         integrals = U.unfoldr (calcHermIntegral rpq alpha) seedI
-        seedI     = HermiteStateIntegral mapI0 listI
-        mapI0     = M.insert k0' f0 M.empty
-        k0'       = Rpa 0 [0, 0, 0]
-        rp2       = sum $ map (^2) rpq
-        y         = alpha*rp2
-        f0        = boysF 0 y
-        listI     = Rpa 0 `fmap` (map (L.zipWith (+) tuv) abcs )
-
+        seedI = HermiteStateIntegral mapI0 listI
+        mapI0 = M.insert k0' f0 M.empty
+        k0'= Rpa 0 [0, 0, 0]
+        rp2 = sum $ map (^2) rpq
+        y = alpha*rp2
+        f0 = boysF 0 y
+        listI = Rpa 0 `fmap` (map (L.zipWith (+) tuv) abcs )
 
 
 -- ======================> McMURCHIE -DAVIDSON SCHEME <=========================
@@ -394,16 +408,17 @@ vijHermite g1 g2 rc derv = ((-1)^sumDervExpo) * cte * (mcMurchie shells [ra,rb,r
 
 --  McMURCHIE -DAVIDSON scheme of the primitive gaussians       
 mcMurchie :: [Funtype] -> [NucCoord]  -> (Exponent,Exponent) -> CartesianDerivatives -> Double
-mcMurchie !shells [ra,rb,rc] (e1,e2) derv =  U.sum $ coeff `deepseq` rtuv `deepseq` U.zipWith (*) coeff rtuv
- where coeff = U.unfoldr (calcHermCoeff [rpa,rpb] gamma) seedC 
-       rtuv  = U.unfoldr (calcHermIntegral rpc gamma) seedI
-       gamma = e1 + e2
-       nu    = e1*e2/gamma
-       rp    = meanp (e1,e2) ra rb
-       [rab,rpa,rpb,rpc] = map restVect [(ra,rb),(rp,ra),(rp,rb),(rp,rc)]
-       seedC = initilized_Seed_Coeff shells rab nu
-       seedI = initilized_Seed_Integral shells rpc gamma derv
+mcMurchie !shells [ra,rb,rc] (e1,e2) derv =
+  let coeff = U.unfoldr (calcHermCoeff [rpa,rpb] gamma) seedC 
+      rtuv  = U.unfoldr (calcHermIntegral rpc gamma) seedI
+      gamma = e1 + e2
+      nu = e1*e2/gamma
+      rp = meanp (e1,e2) ra rb
+      [rab,rpa,rpb,rpc] = map restVect [(ra,rb),(rp,ra),(rp,rb),(rp,rc)]
+      seedC = initilized_Seed_Coeff shells rab nu
+      seedI = initilized_Seed_Integral shells rpc gamma derv
       
+  in  U.sum $ U.zipWith (*) coeff rtuv
         
 --  | Hermite Coefficients calculation using the maybe monad  
 calcHermCoeff :: [NucCoord] -> Double -> HermiteStateCoeff-> Maybe (Double,HermiteStateCoeff)
