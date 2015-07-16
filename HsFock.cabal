@@ -21,7 +21,7 @@ Flag Debug
 Library
   ghc-options:
     -Odph
-    -rtsopts
+    -rtsopts                    
     -fno-liberate-case
     -funfolding-use-threshold1000
     -funfolding-keeness-factor1000
@@ -43,6 +43,7 @@ Library
     , GaussQuadIntegration
     , hmatrix
     , mtl
+    , monad-memo 
     , parallel
     , parsec
     , primitive
@@ -69,7 +70,7 @@ Library
 
 executable HsFock
   Main-is: HsFock.hs
-
+  
   ghc-options:
     -Odph
     -rtsopts
@@ -94,6 +95,7 @@ executable HsFock
     , GaussQuadIntegration
     , hmatrix
     , mtl
+    , monad-memo
     , parallel
     , parsec
     , primitive
@@ -117,6 +119,7 @@ executable HsFock
          Science.QuantumChemistry.HsFock.SampleProjects
          Science.QuantumChemistry.Integrals.IntegralsEvaluation 
          Science.QuantumChemistry.NumericalTools.Boys 
+         Science.QuantumChemistry.NumericalTools.EigenValues
          Science.QuantumChemistry.NumericalTools.GaussElimination
          Science.QuantumChemistry.NumericalTools.JacobiMethod
          Science.QuantumChemistry.NumericalTools.JacobiMethodST
@@ -131,7 +134,7 @@ executable HsFock
 
 -- executable ProfileHS
 --   Main-is: HsFock.hs
-
+  
 --   ghc-options:
 --     -Odph
 --     -rtsopts
@@ -139,10 +142,10 @@ executable HsFock
 --     -funfolding-use-threshold1000
 --     -funfolding-keeness-factor1000
 --     -fllvm
---     -optlo-O3
---     -threaded
+--     -optlo-O3              
 --     -eventlog
-
+--     -threaded
+                  
 --   build-depends:
 --       async
 --     , base          >= 4.5
@@ -157,6 +160,7 @@ executable HsFock
 --     , GaussQuadIntegration
 --     , hmatrix
 --     , mtl
+--     , monad-memo
 --     , parallel
 --     , parsec
 --     , primitive
@@ -180,6 +184,7 @@ executable HsFock
 --          Science.QuantumChemistry.HsFock.SampleProjects
 --          Science.QuantumChemistry.Integrals.IntegralsEvaluation 
 --          Science.QuantumChemistry.NumericalTools.Boys 
+--          Science.QuantumChemistry.NumericalTools.EigenValues
 --          Science.QuantumChemistry.NumericalTools.GaussElimination
 --          Science.QuantumChemistry.NumericalTools.JacobiMethod
 --          Science.QuantumChemistry.NumericalTools.JacobiMethodST
@@ -191,6 +196,7 @@ executable HsFock
          
 
 --   default-language:    Haskell2010
+
 
 
 -- executable testJacobi
