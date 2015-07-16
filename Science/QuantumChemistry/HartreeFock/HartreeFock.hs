@@ -46,10 +46,10 @@ import Science.QuantumChemistry.HartreeFock.DIIS                   (DataDIIS(..)
                                                                    ,calcErrorMtx
                                                                    ,diis
                                                                    ,diisDriver
-                                                                   ,convergeDIIS)             
+                                                                   ,convergeDIIS)
 import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.Integrals.IntegralsEvaluation 
-import Science.QuantumChemistry.NumericalTools.EigenValues         (eigenSolve)
+import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra
 import Science.QuantumChemistry.ConcurrencyTools.Logger
 
@@ -73,7 +73,7 @@ scfHF atoms charge logger = do
             occupied   = floor . (/2) . (subtract charge) . sum 
                                 $ fmap (getZnumber) atoms
             dataDIIS   = DataDIIS S.empty S.empty 5
-        let integrals  = calcIntegrals atoms
+            integrals  = calcIntegrals atoms        
         core      <- hcore atoms
         s         <- mtxOverlap $ atoms
         xmatrix   <- symmOrtho <=< triang2DIM2 $ s

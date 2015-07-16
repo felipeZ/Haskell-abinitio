@@ -1,4 +1,4 @@
-{-# Language BangPatterns #-}
+{-# Language BangPatterns, ViewPatterns  #-}
 
 -- The HaskellFock SCF Project
 -- @2013 Felipe Zapata, Angel Alvarez
@@ -7,19 +7,19 @@
 
 
 module Science.QuantumChemistry.Integrals.IntegralsEvaluation 
-  (
-   (|>)
-  ,(<|)
-  ,(|>>)
-  ,(<<|)
-  ,(<<||>>)
-  ,Operator(..)
-  ,contracted4Centers
-  ,evalIntbykey
-  ,hcore
-  ,mtxOverlap
-  ,normaCoeff
-  )
+  -- (
+  --  (|>)
+  -- ,(<|)
+  -- ,(|>>)
+  -- ,(<<|)
+  -- ,(<<||>>)
+  -- ,Operator(..)
+  -- ,contracted4Centers
+  -- ,evalIntbykey
+  -- ,hcore
+  -- ,mtxOverlap
+  -- ,normaCoeff
+  -- )
   where
 
 import Control.Applicative
@@ -27,6 +27,7 @@ import Control.Arrow ((&&&),first,second)
 import Control.DeepSeq
 import Control.Monad (liftM,mplus,sequence)
 import Control.Monad.List
+import Control.Monad.Memo (Memo, memo, runMemo)
 import Control.Monad.State
 import Control.Parallel.Strategies (parMap,rdeepseq)
 import Data.Array.Repa         as R hiding (map)
@@ -135,7 +136,6 @@ gauss1 <| op = (gauss1, op)
 (|>) :: (Gauss,Operator) -> Gauss -> Double
 (gauss1,op) |> gauss2 = case op of
                              Tij -> tab gauss1 gauss2
-
 -- | Overlap between a set of contracted Gauss functions                            
 (<<||>>) :: (NucCoord,CGF) -> (NucCoord,CGF) -> Double
 (r1,cgf1) <<||>> (r2,cgf2) = sijContracted r1 r2 cgf1 cgf2
@@ -312,9 +312,9 @@ twoTermsERI ga gb =  (*cte) . U.sum $ coeff `deepseq` U.map (*suma) coeff
 
   where suma              = U.sum $ U.zipWith (*) sgns coeff
         gs                = [ga,gb]
-        coeff             = U.unfoldr (calcHermCoeff [rpa,rpb] p) seedC       
+        coeff             = calcHermCoeff [rpa,rpb] p seedC          
         tuvs              = map getijt $ genCoeff_Integral [symb1,symb2] derv
-        seedC             = initilized_Seed_Coeff [symb1,symb2] rab mu
+        seedC             = initilizedSeedCoeff [symb1,symb2] rab mu        
         sgns              = U.fromList . map (\xs-> (-1.0)^(sum xs)) $ tuvs
         [ra,rb]           = map nucCoord gs
         [symb1,symb2]     = map funtype  gs
@@ -333,10 +333,10 @@ twoElectronHermite gs = (cte *) . U.sum . U.zipWith (*) coeff1 $!! U.fromList
 
   where coefftuv = genCoeff_Integral [symb1,symb2] derv
         abcs     = genCoeff_Integral [symb3,symb4] derv
-        coeff1   = U.unfoldr (calcHermCoeff [rpa,rpb] p) seedC1
-        coeff2   = U.unfoldr (calcHermCoeff [rqc,rqd] q) seedC2
-        seedC1   = initilized_Seed_Coeff [symb1,symb2] rab mu
-        seedC2   = initilized_Seed_Coeff [symb3,symb4] rcd nu
+        coeff1   = calcHermCoeff [rpa,rpb] p seedC1
+        coeff2   = calcHermCoeff [rqc,rqd] q seedC2
+        seedC1   = initilizedSeedCoeff [symb1,symb2] rab mu
+        seedC2   = initilizedSeedCoeff [symb3,symb4] rcd nu
         ps      = map gaussP gs
         rp      = meanp (e1,e2) ra rb
         rq      = meanp (e3,e4) rc rd
@@ -395,124 +395,75 @@ vijHermite g1 g2 rc derv = ((-1)^sumDervExpo) * cte * (mcMurchie shells [ra,rb,r
 --  McMURCHIE -DAVIDSON scheme of the primitive gaussians       
 mcMurchie :: [Funtype] -> [NucCoord]  -> (Exponent,Exponent) -> CartesianDerivatives -> Double
 mcMurchie !shells [ra,rb,rc] (e1,e2) derv =  U.sum $ coeff `deepseq` rtuv `deepseq` U.zipWith (*) coeff rtuv
- where coeff = U.unfoldr (calcHermCoeff [rpa,rpb] gamma) seedC 
+ where coeff = calcHermCoeff [rpa,rpb] gamma seedC 
        rtuv  = U.unfoldr (calcHermIntegral rpc gamma) seedI
        gamma = e1 + e2
        nu    = e1*e2/gamma
        rp    = meanp (e1,e2) ra rb
        [rab,rpa,rpb,rpc] = map restVect [(ra,rb),(rp,ra),(rp,rb),(rp,rc)]
-       seedC = initilized_Seed_Coeff shells rab nu
+       seedC = initilizedSeedCoeff shells rab nu       
        seedI = initilized_Seed_Integral shells rpc gamma derv
       
         
---  | Hermite Coefficients calculation using the maybe monad  
-calcHermCoeff :: [NucCoord] -> Double -> HermiteStateCoeff-> Maybe (Double,HermiteStateCoeff)
-calcHermCoeff rpab gamma stCoeff = do
-    ls <- safeHead listC
-    let  (val,newMap) = updateMap ls
-         newSt = stCoeff {getmapC = newMap,getkeyC = tail listC}
-    return (val,newSt)
-
-  where listC = getkeyC stCoeff
-        oldmap = getmapC stCoeff
-        updateMap [xpa,ypa,zpa] = runState (hermEij xpa 0 >>= \e1 ->
-                            hermEij ypa 1 >>= \e2 ->
-                            hermEij zpa 2 >>= \e3 ->
-                            return $ e1*e2*e3 ) oldmap
-
-        hermEij k label = get >>= \st ->
-                            let xpab = map (\r -> r !! label) rpab
-                                ijt = getijt k
-                                Just (x,newMap) = (lookupM k st) `mplus` Just (recursiveHC xpab gamma k st ijt)
-                          in put newMap >> return x
-        
 -- | Hermite analytical integrals       
-calcHermIntegral :: NucCoord  -> Double -> HermiteStateIntegral -> Maybe (Double,HermiteStateIntegral)
-calcHermIntegral rpc gamma stIntegral =  do
+calcHermIntegral ::  NucCoord -> Double -> HermiteStateIntegral -> Maybe (Double,HermiteStateIntegral)
+calcHermIntegral rpa alpha stIntegral = do 
     hi <- safeHead listI
-    let Just (val,newMap) = fun hi
+    let (val,newMap) = runMemo (calcHermM rpa alpha hi) oldmap
         newSt = stIntegral {getmapI = newMap,getkeyI = tail listI}
-    return (val,newSt)
+    return (val,newSt) 
 
-  where listI = getkeyI stIntegral
-        oldmap = getmapI stIntegral
-        fun hi = (lookupM hi oldmap) `mplus` Just (recursiveHI rpc gamma hi oldmap (getijt hi))
-
--- |Recursive Hermite Coefficients
-recursiveHC :: [Double] -> Double -> HermiteIndex ->  MapHermite -> [Int] -> (Double, MapHermite)
-recursiveHC pab@[xpa,xpb] gamma hi mapC [i,j,t]
-
-       |(i+j) < t = (0.0,mapC)
-
-       |t == 0 && i>=1 = let ([cij0,cij1],mapO) = updateMap [1,0,0] [1,0,(-1)]
-                             val = xpa*cij0 + cij1
-                             newMap = M.insert hi val mapO
-                         in (val,newMap)
-
-       |t == 0 && j>=1 = let ([cij0,cij1],mapO) = updateMap [0,1,0] [0,1,(-1)]
-                             val = xpb*cij0 + cij1
-                             newMap = M.insert hi val mapO
-                         in (val,newMap)
-
-       |otherwise =      let ([aijt,bijt],mapO) = updateMap [1,0,1] [0,1,1]
-                             [i',j',t'] = map fromIntegral [i,j,t]
-                             val = recip (2.0*gamma*t') * (i'*aijt + j'*bijt)
-                             newMap = M.insert hi val mapO
-                         in (val,newMap)
-
-  where updateMap !xs !ys = runState (sequence [calcVal xs, calcVal ys]) mapC
-        calcVal !xs = get >>= \st -> let key = sub xs
-                                         funAlternative = recursiveHC pab gamma key st
-                                         (v,m) = boyMonplus funAlternative key st
-                                     in put m >> return v
-        sub [a,b,c] = hi {getijt = [i-a,j-b,t-c]}
+      where listI = getkeyI stIntegral
+            oldmap = getmapI stIntegral
         
 -- |Recursive Hermite Integrals        
-recursiveHI :: NucCoord -> Double -> HermiteIndex-> MapHermite -> [Int] -> (Double,MapHermite)
-recursiveHI rpc gamma hi mapI [t,u,v]
+calcHermM :: NucCoord  -> Double -> HermiteIndex ->  Memo HermiteIndex Double Double
+calcHermM rpq@[x,y,z] alpha (Rpa n [t,u,v]) 
+     | any (<0) [t,u,v] = return $ 0
+   
+     | t >= 1 = do  boy1 <- memo (calcHermM rpq alpha) $ Rpa (n+1) [t-2,u,v]
+                    boy2 <- memo (calcHermM rpq alpha) $ Rpa (n+1) [t-1,u,v] 
+                    return $ (fromIntegral t -1)*boy1 + x*boy2
 
- | any (<0) [t,u,v] = (0.0,mapI)
+     | u >= 1 = do  boy1 <- memo (calcHermM rpq alpha) $ Rpa (n+1) [t,u-2,v]
+                    boy2 <- memo (calcHermM rpq alpha) $ Rpa (n+1) [t,u-1,v] 
+                    return $ (fromIntegral u -1)*boy1 + y*boy2
 
- | t >= 1 = let ([boy1,boy2],mapO) = updateMap [2,0,0] [1,0,0]
-                val = (fromIntegral t -1)*boy1 + (rpc !! 0)*boy2
-                newM = M.insert hi val mapI
-            in (val,newM)
+     | v >= 1 = do  boy1 <- memo (calcHermM rpq alpha) $ Rpa (n+1) [t,u,v-2]
+                    boy2 <- memo (calcHermM rpq alpha) $ Rpa (n+1) [t,u,v-1] 
+                    return $ (fromIntegral v -1)*boy1 + z*boy2
 
- | u >= 1 = let ([boy1,boy2],mapO) = updateMap [0,2,0] [0,1,0]
-                val = (fromIntegral u -1)*boy1 + (rpc !! 1)*boy2
-                newM = M.insert hi val mapI
-            in (val,newM)
+     | otherwise = do let arg = (alpha*) . sum . (map (^2))  $ rpq 
+                      return $ (-2.0*alpha)^n * boysF (fromIntegral n) arg 
 
- | v >= 1 = let ([boy1,boy2],mapO) = updateMap [0,0,2] [0,0,1]
-                val = (fromIntegral v -1)*boy1 + (rpc !! 2)*boy2
-                newM = M.insert hi val mapI
-            in (val,newM)
+-- | Hermite Coefficients calculation  
+calcHermCoeff :: [NucCoord] -> Double -> ([Double],[[HermiteIndex]])-> VecUnbox
+calcHermCoeff pab@[xspa,xspb] gamma (es0,hss) = U.fromList $ map (calcCoeff es0) hss
 
- | otherwise =  let arg = (gamma*) . sum . (map (^2))  $ rpc
-                    x1 = (-2.0*gamma)^n
-                    val = x1 * boysF (fromIntegral n) arg
-                    newM = M.insert hi val mapI
-                in (val,newM)
+ where calcCoeff es0 hs = product $ zipWith4 (recursiveHermCoeff gamma) xspa xspb es0 hs 
 
-  where updateMap !xs !ys = runState (sequence [calcVal xs, calcVal ys]) mapI
-        calcVal xs = get >>= \st -> let key = sub xs
-                                        funAlternative = recursiveHI rpc gamma key st
-                                        (v,m) = boyMonplus funAlternative key st
-                                    in put m >> return v
-        n = getN hi -- order of the boy function
-        sub [a,b,c] = hi {getN = n + 1, getijt = [t-a,u-b,v-c]}
-        
--- |Boys Function calculation using the monad plus        
-boyMonplus :: ([Int] -> (Double,MapHermite)) -> HermiteIndex-> MapHermite -> (Double,MapHermite)
-boyMonplus fun key m = fromMaybe err $ (lookupM key m) `mplus` (Just (res,newM))
-  where (res,oldmap) = fun (getijt key)
-        newM = M.insert key res oldmap
-        err = error "failure in the recursive Hermite Procedure" 
- 
-lookupM :: Ord k => k -> M.Map k a -> Maybe (a , M.Map k a)
-lookupM k m = do 
-              val <- M.lookup k m
-              return (val,m)                                                             
+recursiveHermCoeff :: Double -> Double -> Double -> Double -> HermiteIndex -> Double
+recursiveHermCoeff gamma xpa xpb e0 hs@(getijt -> ijt@[i,j,t])
+
+       | all (==0) ijt  = e0
+  
+       | any (<0) ijt  = 0 
+
+       |t == 0 && i>=1 = let cij0 = fun $ hs {getijt = [i-1,j,0]}
+                             cij1 = fun $ hs {getijt = [i-1,j,1]}
+                          in xpa*cij0 + cij1
+
+       |t == 0 && j>=1 = let cij0 = fun $ hs {getijt = [i,j-1,0]}
+                             cij1 = fun $ hs {getijt = [i,j-1,1]}
+                         in xpb*cij0 + cij1
+
+       |otherwise =      let aijt = fun $ hs {getijt = [i-1,j,t-1]}
+                             bijt = fun $ hs {getijt = [i,j-1,t-1]}
+                             [i',j',t'] = map fromIntegral [i,j,t]
+                         in recip (2*gamma*t') * (i'*aijt + j'*bijt)
+
+ where fun = recursiveHermCoeff gamma xpa xpb e0
+
               
 {- we sent to listIndexes two Funtypes and the function return
 the exponent for x,y,z according to the l-number of the
@@ -523,13 +474,14 @@ listIndexes :: [Funtype] -> [Int]
 listIndexes shells = funtyp2Index <$> shells <*> [0..2]
 
 
-initilized_Seed_Coeff :: [Funtype] -> NucCoord -> Double -> HermiteStateCoeff        
-initilized_Seed_Coeff shells rab mu = HermiteStateCoeff mapC0 listC
-  where mapC0 = L.foldl' (\acc (k, v) -> M.insert k v acc) M.empty $ L.zip k0 e0 
-        listC = genCoeff_Hermite shells
+initilizedSeedCoeff :: [Funtype] -> NucCoord -> Double -> ([Double],[[HermiteIndex]])        
+initilizedSeedCoeff shells rab mu =  (e0,listC)
+  where listC = genCoeff_Hermite shells
         k0 = [Xpa [0, 0, 0], Ypa [0, 0, 0], Zpa [0, 0, 0]] 
         e0 = map (\x -> exp(-mu*(x^2))) rab
         
+
+
         
 genCoeff_Hermite :: [Funtype] -> [[HermiteIndex]]
 genCoeff_Hermite shells = do
