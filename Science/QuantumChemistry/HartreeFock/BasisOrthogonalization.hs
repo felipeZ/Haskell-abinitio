@@ -4,7 +4,6 @@ module Science.QuantumChemistry.HartreeFock.BasisOrthogonalization  where
 import Data.Array.Repa as R
 import Data.Array.Repa.Unsafe as R
 import Data.Array.Repa.Algorithms.Matrix (mmultP,transpose2P)
-import qualified Data.List as DL
 import qualified Data.Vector.Unboxed as U
 
 -- internal modules

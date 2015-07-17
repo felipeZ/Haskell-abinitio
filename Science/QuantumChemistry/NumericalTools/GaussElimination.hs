@@ -4,12 +4,11 @@ module Science.QuantumChemistry.NumericalTools.GaussElimination {-(
 --                          gaussElem
                         )-}  where
 
-import qualified Data.List as DL
-import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as VU
+import Control.Arrow((&&&))
 import Data.Array.Repa         as R
 import Data.Array.Repa.Unsafe  as R
-import Control.Arrow((&&&))
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as VU
 
 --  --------------> Internal Modules <---------
 import qualified Science.QuantumChemistry.NumericalTools.LinearAlgebra as LA

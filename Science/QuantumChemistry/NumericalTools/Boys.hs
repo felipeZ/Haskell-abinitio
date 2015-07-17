@@ -39,10 +39,11 @@
 
 module Science.QuantumChemistry.NumericalTools.Boys where
 
+import Data.Foldable (mapM_)
 import Data.Number.Erf
 import Math.Gamma
 import Math.GaussianQuadratureIntegration as GQI
-
+import Prelude hiding (mapM_)
 
 
 -- Boys function

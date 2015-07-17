@@ -49,6 +49,8 @@ import qualified Data.Map as M
 import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix as R
+import Data.Foldable
+import Prelude hiding (all,sum)
 
 -- ============> Internal imports <==============
 import Science.QuantumChemistry.GlobalTypes

@@ -14,7 +14,8 @@ module Science.QuantumChemistry.ParsecTools.BasisParser
 
     
 import Data.Char
-import Data.List as DL
+import Data.Foldable (foldl',mapM_)
+import Prelude hiding (foldl',mapM_)
 import Text.Parsec
 import Text.Parsec.ByteString (Parser,parseFromFile)
 
@@ -182,7 +183,7 @@ orbitalIdent = do
 
 -- | convert a list o lowercase estring into a list with both lower and uppercase elements
 lowerAndUpper :: [String] -> [String]
-lowerAndUpper = (foldl (\a x -> x:(map toUpper x):a ) []).(reverse)
+lowerAndUpper = (foldl' (\a x -> x:(fmap toUpper x):a ) []).(reverse)
 
 -- | Known list of molecular orbital types. People sugest there are more...
 orbitalStrings :: [String]

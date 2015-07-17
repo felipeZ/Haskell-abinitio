@@ -16,8 +16,10 @@ import Control.Monad.List (guard)
 import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix as R
+import Data.Foldable (sum)
 import qualified Data.List as DL
 import qualified Data.Vector.Unboxed as VU
+import Prelude hiding (sum)
 
 -- =========> Internal Modules <=========
 import Science.QuantumChemistry.GlobalTypes as G

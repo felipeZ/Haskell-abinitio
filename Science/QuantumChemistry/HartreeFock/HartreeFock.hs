@@ -31,10 +31,12 @@ import Control.Parallel.Strategies
 import Data.Array.Repa         as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix as R
-import qualified Data.List as L
+import Data.Foldable
+import Data.List as L hiding (sum)
 import qualified Data.Map as M
 import qualified Data.Sequence as S
 import qualified Data.Vector.Unboxed as VU
+import Prelude hiding (sum)
 import Text.Printf
 
 
@@ -162,7 +164,7 @@ calcIntegrals ::  [AtomData] -> Array U DIM1 Double
 
 calcIntegrals atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval cartProd 
 
-  where parChunks n f =  withStrategy (parListChunk n rdeepseq ) . L.map f
+  where parChunks n f =  withStrategy (parListChunk n rdeepseq ) . fmap f
         dim     = pred . sum . fmap (length . getBasis) $ atoms
         funEval = evalIntbykey atoms 
         cartProd = do
@@ -282,7 +284,6 @@ variationalE core fockMtx newDensity = (0.5*) $ sumAllS $ fromFunction (ix2 dim 
 
  where dim    = dimTriang d 
        (Z:.d) = extent core
-
 
 
 -- | Function to check convergency

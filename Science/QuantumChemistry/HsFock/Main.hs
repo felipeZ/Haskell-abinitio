@@ -7,18 +7,20 @@
 
 module Science.QuantumChemistry.HsFock.Main where
 
-import Data.List (find)
+import Data.Foldable (find,mapM_)
 import Data.Maybe ( fromMaybe )
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Either
+import Prelude hiding (find, mapM_)
 import System.Console.GetOpt
 import System.Directory (doesDirectoryExist)
 import System.Environment ( getArgs )
 import System.FilePath
 import System.IO
 import Text.Printf
+
 
 -- Cabal imports
 import Data.Version (showVersion)

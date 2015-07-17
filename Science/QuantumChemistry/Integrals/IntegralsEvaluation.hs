@@ -25,7 +25,7 @@ module Science.QuantumChemistry.Integrals.IntegralsEvaluation
 import Control.Applicative
 import Control.Arrow ((&&&),first,second)
 import Control.DeepSeq
-import Control.Monad (liftM,mplus,sequence)
+import Control.Monad (liftM,mplus)
 import Control.Monad.List
 import Control.Monad.Memo (Memo, memo, runMemo)
 import Control.Monad.State
@@ -33,11 +33,12 @@ import Control.Parallel.Strategies (parMap,rdeepseq)
 import Data.Array.Repa         as R hiding (map)
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix (mmultP)
-import Data.List as L
+import Data.Foldable 
+import Data.List as L hiding (all,any,product, sum)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
-import Data.Monoid (Monoid(..),mappend,mconcat,mempty)
 import qualified Data.Vector.Unboxed as U
+import Prelude hiding (all,any,product,sum)
 
 -- internal modules 
 import Science.QuantumChemistry.NumericalTools.Boys(boysF)
@@ -162,10 +163,10 @@ b1 <<| op  = (b1,op)
 mtxOverlap :: Monad m => [AtomData] -> m (Array U DIM1 Double) 
 mtxOverlap atoms = computeUnboxedP . fromFunction (Z:.dim) $
  (\idx -> let (Z:.i:.j) = LA.indexFlat2DIM2 norbital idx
-              [(r1,cgf1),(r2,cgf2)] = map calcIndex $ [i,j]
+              [(r1,cgf1),(r2,cgf2)] = fmap calcIndex $ [i,j]
           in sijContracted r1 r2 cgf1 cgf2)
              
-  where norbital = sum . map (length . getBasis) $ atoms
+  where norbital = sum . fmap (length . getBasis) $ atoms
         dim = (norbital^2 + norbital) `div`2
         calcIndex = LA.calcCoordCGF atoms
 
@@ -177,7 +178,7 @@ sijContracted r1 r2 cgf1 cgf2 =
                                   else  sum $ do
                               g1 <- getPrimitives cgf1
                               g2 <- getPrimitives cgf2
-                              let [l1,l2] = map getfunTyp [cgf1,cgf2]
+                              let [l1,l2] = fmap getfunTyp [cgf1,cgf2]
                                   gauss1 = Gauss r1 l1 g1
                                   gauss2 = Gauss r2 l2 g2
                               return (gauss1 <||> gauss2 )
@@ -188,11 +189,11 @@ sab :: Gauss -> Gauss -> Double
 sab g1@(Gauss r1 shellA (c1,e1)) g2@(Gauss r2 shellB (c2,e2)) =
    (c1*c2) * (product $!! [obaraSaika gamma (s00 !! x) (pa !! x) (pb !! x) (l1 x) (l2 x) |x <- [0..2]])
   
-  where [l1,l2] = map funtyp2Index [shellA,shellB]
-        [pa,pb] = map (L.zipWith (-) p) [r1,r2]
+  where [l1,l2] = fmap funtyp2Index [shellA,shellB]
+        [pa,pb] = fmap (L.zipWith (-) p) [r1,r2]
         p = meanp (e1,e2) r1 r2
         expo = \x2 -> exp $ -mu * x2
-        s00 = map ((*cte) . expo . (^2)) $  L.zipWith (-) r1 r2
+        s00 = fmap ((*cte) . expo . (^2)) $  L.zipWith (-) r1 r2
         cte = sqrt $ pi/ gamma
         gamma = e1+ e2
         mu = e1*e2/gamma
@@ -210,7 +211,7 @@ obaraSaika gamma s00 pax pbx i j = s i j
                 | otherwise  =   pax * (s (pred m) n) + c * (m_1 * (s (pred2 m) n) +
                                (fromIntegral n) * (s (pred m) $ pred n))
 
-          where [m_1,n_1] = map (fromIntegral . pred) [m,n]
+          where [m_1,n_1] = fmap (fromIntegral . pred) [m,n]
          
 
          
@@ -220,14 +221,14 @@ obaraSaika gamma s00 pax pbx i j = s i j
 hcore :: Monad m => [AtomData] -> m (Array U DIM1 Double)
 hcore !atoms  = computeUnboxedP . fromFunction (Z:. dim) $
  (\idx -> let (Z:.i:.j) = LA.indexFlat2DIM2 norbital idx
-              [atomi,atomj] = map calcIndex $ [i,j]
+              [atomi,atomj] = fmap calcIndex $ [i,j]
               derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
               sumVij = sum $!! L.zipWith (\z rc -> ((-z) * atomi <<|Vij rc derv |>> atomj)) atomicZ coords
              in (atomi <<|Tij|>> atomj) + sumVij)
 
-  where coords    = map getCoord atoms
-        atomicZ   = map getZnumber atoms
-        norbital  = sum . map (length . getBasis) $ atoms
+  where coords    = fmap getCoord atoms
+        atomicZ   = fmap getZnumber atoms
+        norbital  = sum . fmap (length . getBasis) $ atoms
         dim       = (norbital^2 + norbital) `div`2
         calcIndex = LA.calcCoordCGF atoms
 {- INLINE hcore -}
@@ -247,7 +248,7 @@ tijContracted (r1,cgf1) (r2,cgf2) =
           sum $!! do
               g1 <- getPrimitives cgf1
               g2 <- getPrimitives cgf2
-              let [l1,l2] = map getfunTyp [cgf1,cgf2]
+              let [l1,l2] = fmap getfunTyp [cgf1,cgf2]
                   gauss1 = Gauss r1 l1 g1 
                   gauss2 = Gauss r2 l2 g2
               return ( gauss1 <| Tij |> gauss2 )  
@@ -255,19 +256,19 @@ tijContracted (r1,cgf1) (r2,cgf2) =
 -- | Primitive kinetic energy terms          
 tab :: Gauss -> Gauss -> Double
 tab gA@(Gauss r1 shell1 (c1,e1)) gB@(Gauss !r2 !shell2 (!c2,!e2)) =
-   c1*c2 * (sum . map product $! permute [\x -> tx x (j x) (k x),\x -> sx x (j x) (k x),\x -> sx x (j x) (k x)] [0..2])
+   c1*c2 * (sum . fmap product $! permute [\x -> tx x (j x) (k x),\x -> sx x (j x) (k x),\x -> sx x (j x) (k x)] [0..2])
 
-  where [j,k] = map funtyp2Index [shell1,shell2]
+  where [j,k] = fmap funtyp2Index [shell1,shell2]
         sx i lang1 lang2 = obaraSaika gamma (s00 !! i) (pa !! i) (pb !! i) lang1 lang2
-        tx i lang1 lang2 = let [l1,l2] = map fromIntegral [lang1,lang2]
+        tx i lang1 lang2 = let [l1,l2] = fmap fromIntegral [lang1,lang2]
                            in -2.0 * e2^2 * (sx i lang1 (lang2+2)) +
                               e2*(2*l2 +1)* (sx i lang1 lang2) -
                               0.5*l2*(l2-1)*(sx i lang1 (lang2 -2))
         cte = sqrt (pi/ gamma)
-        s00 = map ((*cte) . expo . (^2)) $  L.zipWith (-) r1 r2
+        s00 = fmap ((*cte) . expo . (^2)) $  L.zipWith (-) r1 r2
         t00 = \x -> e1 - 2*e1^2 *((pa !! x)^2 + (recip $ 2*gamma)) * (s00 !! x )
         expo = \x2 -> exp $ -mu * x2
-        [pa,pb] = map (L.zipWith (-) p)  [r1,r2]
+        [pa,pb] = fmap (L.zipWith (-) p)  [r1,r2]
         p = meanp (e1,e2) r1 r2
         gamma = e1+ e2
         mu = e1*e2/gamma        
@@ -286,14 +287,14 @@ evalIntbykey atoms keys = contracted4Centers centers
 -- | Calculate electronic interaction among the four center contracted Gaussian functions
 contracted4Centers :: [(NucCoord,CGF)] -> Double
 contracted4Centers [(ra,cgf1), (rb,cgf2), (rc,cgf3), (rd,cgf4)] = sum cartProd
-  where [l1,l2,l3,l4] = map getfunTyp [cgf1,cgf2,cgf3,cgf4]
+  where [l1,l2,l3,l4] = fmap getfunTyp [cgf1,cgf2,cgf3,cgf4]
         cartProd = do
           g1 <- getPrimitives cgf1
           g2 <- getPrimitives cgf2
           g3 <- getPrimitives cgf3
           g4 <- getPrimitives cgf4
           let gauss = L.zipWith3 Gauss [ra,rb,rc,rd] [l1,l2,l3,l4] [g1,g2,g3,g4]
-              [f1,f2,f3,f4] = L.map funtype gauss
+              [f1,f2,f3,f4] = fmap funtype gauss
               [ga,gb,gc,gd] = gauss
           guard $ schwarz gauss 
           return $ twoElectronHermite gauss
@@ -313,15 +314,15 @@ twoTermsERI ga gb =  (*cte) . U.sum $ coeff `deepseq` U.map (*suma) coeff
   where suma              = U.sum $ U.zipWith (*) sgns coeff
         gs                = [ga,gb]
         coeff             = calcHermCoeff [rpa,rpb] p seedC          
-        tuvs              = map getijt $ genCoeff_Integral [symb1,symb2] derv
+        tuvs              = fmap getijt $ genCoeff_Integral [symb1,symb2] derv
         seedC             = initilizedSeedCoeff [symb1,symb2] rab mu        
-        sgns              = U.fromList . map (\xs-> (-1.0)^(sum xs)) $ tuvs
-        [ra,rb]           = map nucCoord gs
-        [symb1,symb2]     = map funtype  gs
-        ([c1,c2],[e1,e2]) = (map fst ) &&& (map snd ) $ map gaussP gs
+        sgns              = U.fromList . fmap (\xs-> (-1.0)^(sum xs)) $ tuvs
+        [ra,rb]           = fmap nucCoord gs
+        [symb1,symb2]     = fmap funtype  gs
+        ([c1,c2],[e1,e2]) = (fmap fst ) &&& (map snd ) $ fmap gaussP gs
         p                 = e1 + e2
         rp                = meanp (e1,e2) ra rb
-        [rab,rpa,rpb]     = map restVect  (zip [ra,rp,rp] [rb,ra,rb])
+        [rab,rpa,rpb]     = fmap restVect  (zip [ra,rp,rp] [rb,ra,rb])
         mu                = e1*e2* (recip $ e1 + e2)
         cte               = (c1^2 * c2^2 ) * (sqrt $ (pi/(2*p))^5)
         derv              = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
@@ -337,33 +338,33 @@ twoElectronHermite gs = (cte *) . U.sum . U.zipWith (*) coeff1 $!! U.fromList
         coeff2   = calcHermCoeff [rqc,rqd] q seedC2
         seedC1   = initilizedSeedCoeff [symb1,symb2] rab mu
         seedC2   = initilizedSeedCoeff [symb3,symb4] rcd nu
-        ps      = map gaussP gs
+        ps      = fmap gaussP gs
         rp      = meanp (e1,e2) ra rb
         rq      = meanp (e3,e4) rc rd
         [mu,nu] = (\(a,b) -> a*b* (recip $ a + b)) `fmap` [(e1,e2),(e3,e4)]
         [p,q]   = uncurry (+) `fmap` [(e1,e2),(e3,e4)]
         alpha   = p*q/(p+q)
         cte     = (c1*c2*c3*c4*) . (*(2.0*pi**2.5)) . recip $ (p * q ) * (sqrt $ p + q)
-        [ra,rb,rc,rd]                 = map nucCoord gs
-        [symb1,symb2,symb3,symb4]     = map funtype  gs
-        [rab,rcd,rpa,rpb,rqc,rqd,rpq] = map restVect  (zip [ra,rc,rp,rp,rq,rq,rp][rb,rd,ra,rb,rc,rd,rq])
-        ([c1,c2,c3,c4],[e1,e2,e3,e4]) = (map fst ) &&& (map snd ) $ ps
+        [ra,rb,rc,rd]                 = fmap nucCoord gs
+        [symb1,symb2,symb3,symb4]     = fmap funtype  gs
+        [rab,rcd,rpa,rpb,rqc,rqd,rpq] = fmap restVect  (zip [ra,rc,rp,rp,rq,rq,rp][rb,rd,ra,rb,rc,rd,rq])
+        ([c1,c2,c3,c4],[e1,e2,e3,e4]) = (fmap fst ) &&& (fmap snd ) $ ps
         derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
 
 
 mcMurchie2 :: VecUnbox -> NucCoord -> Double -> [HermiteIndex] -> HermiteIndex -> Double
 mcMurchie2 !coeff2 rpq alpha abcs' tuv' = U.sum $ integrals `deepseq` U.zipWith3 (\x y z -> x*y*z) sgns coeff2  integrals
   where tuv       = getijt tuv'
-        abcs      = map getijt  abcs'
-        sgns      = U.fromList $ map (\xs-> (-1.0)^(sum xs)) abcs
+        abcs      = fmap getijt  abcs'
+        sgns      = U.fromList $ fmap (\xs-> (-1.0)^(sum xs)) abcs
         integrals = U.unfoldr (calcHermIntegral rpq alpha) seedI
         seedI     = HermiteStateIntegral mapI0 listI
         mapI0     = M.insert k0' f0 M.empty
         k0'       = Rpa 0 [0, 0, 0]
-        rp2       = sum $ map (^2) rpq
+        rp2       = sum $ fmap (^2) rpq
         y         = alpha*rp2
         f0        = boysF 0 y
-        listI     = Rpa 0 `fmap` (map (L.zipWith (+) tuv) abcs )
+        listI     = Rpa 0 `fmap` (fmap (L.zipWith (+) tuv) abcs )
 
 
 
@@ -377,7 +378,7 @@ vijContracted :: (NucCoord,CGF) -> NucCoord -> (NucCoord,CGF) -> CartesianDeriva
 vijContracted (ra,cgf1) rc (rb,cgf2) derv = sum $!
         do g1 <- getPrimitives cgf1
            g2 <- getPrimitives cgf2
-           let [l1,l2] = map getfunTyp [cgf1,cgf2]
+           let [l1,l2] = fmap getfunTyp [cgf1,cgf2]
                gauss1 =  Gauss ra l1 g1
                gauss2 =  Gauss rb l2 g2
            return $!! vijHermite gauss1 gauss2 rc derv
@@ -387,9 +388,9 @@ vijHermite :: Gauss -> Gauss -> NucCoord -> CartesianDerivatives -> Double
 vijHermite g1 g2 rc derv = ((-1)^sumDervExpo) * cte * (mcMurchie shells [ra,rb,rc] (e1,e2) derv)
   where cte = c1 * c2 * 2.0 * (pi/gamma) 
         gamma = e1+e2     
-        [ra,rb] =  map nucCoord [g1,g2]
-        shells = map funtype [g1,g2]
-        [(c1,e1),(c2,e2)] = map gaussP [g1,g2]
+        [ra,rb] =  fmap nucCoord [g1,g2]
+        shells = fmap funtype [g1,g2]
+        [(c1,e1),(c2,e2)] = fmap gaussP [g1,g2]
         sumDervExpo = getExponentDerivatives derv
 
 --  McMURCHIE -DAVIDSON scheme of the primitive gaussians       
@@ -400,7 +401,7 @@ mcMurchie !shells [ra,rb,rc] (e1,e2) derv =  U.sum $ coeff `deepseq` rtuv `deeps
        gamma = e1 + e2
        nu    = e1*e2/gamma
        rp    = meanp (e1,e2) ra rb
-       [rab,rpa,rpb,rpc] = map restVect [(ra,rb),(rp,ra),(rp,rb),(rp,rc)]
+       [rab,rpa,rpb,rpc] = fmap restVect [(ra,rb),(rp,ra),(rp,rb),(rp,rc)]
        seedC = initilizedSeedCoeff shells rab nu       
        seedI = initilized_Seed_Integral shells rpc gamma derv
       
@@ -438,7 +439,7 @@ calcHermM rpq@[x,y,z] alpha (Rpa n [t,u,v])
 
 -- | Hermite Coefficients calculation  
 calcHermCoeff :: [NucCoord] -> Double -> ([Double],[[HermiteIndex]])-> VecUnbox
-calcHermCoeff pab@[xspa,xspb] gamma (es0,hss) = U.fromList $ map (calcCoeff es0) hss
+calcHermCoeff pab@[xspa,xspb] gamma (es0,hss) = U.fromList $ fmap (calcCoeff es0) hss
 
  where calcCoeff es0 hs = product $ zipWith4 (recursiveHermCoeff gamma) xspa xspb es0 hs 
 
@@ -459,7 +460,7 @@ recursiveHermCoeff gamma xpa xpb e0 hs@(getijt -> ijt@[i,j,t])
 
        |otherwise =      let aijt = fun $ hs {getijt = [i-1,j,t-1]}
                              bijt = fun $ hs {getijt = [i,j-1,t-1]}
-                             [i',j',t'] = map fromIntegral [i,j,t]
+                             [i',j',t'] = fmap fromIntegral [i,j,t]
                          in recip (2*gamma*t') * (i'*aijt + j'*bijt)
 
  where fun = recursiveHermCoeff gamma xpa xpb e0
@@ -478,7 +479,7 @@ initilizedSeedCoeff :: [Funtype] -> NucCoord -> Double -> ([Double],[[HermiteInd
 initilizedSeedCoeff shells rab mu =  (e0,listC)
   where listC = genCoeff_Hermite shells
         k0 = [Xpa [0, 0, 0], Ypa [0, 0, 0], Zpa [0, 0, 0]] 
-        e0 = map (\x -> exp(-mu*(x^2))) rab
+        e0 = fmap (\x -> exp(-mu*(x^2))) rab
         
 
 
@@ -498,7 +499,7 @@ initilized_Seed_Integral !symbols !rpc !gamma !derv = HermiteStateIntegral mapI0
         k0'= Rpa 0 [0, 0, 0] 
         y= gamma*rpc2
         f0 = boysF 0 y
-        rpc2 = sum $ map (^2) rpc
+        rpc2 = sum $ fmap (^2) rpc
         listI = genCoeff_Integral symbols derv
         
                 
@@ -537,11 +538,11 @@ binomial l k = fromIntegral $ fac l `div` (fac k * fac (l-k))
 
 -- | Square internuclear distance function
 rab2 :: NucCoord -> NucCoord -> Double
-rab2 a b = sum . map (^2). L.zipWith (-) a $ b
+rab2 a b = sum . fmap (^2). L.zipWith (-) a $ b
 
 -- | Mean point between two gaussians
 meanp ::(Exponent,Exponent) -> NucCoord -> NucCoord -> [Double]
-meanp (e1,e2) ra rb = map (\(a,b) -> (e1*a + e2*b)/(e1+e2)) $ L.zip ra rb
+meanp (e1,e2) ra rb = fmap (\(a,b) -> (e1*a + e2*b)/(e1+e2)) $ L.zip ra rb
 
 restVect :: (NucCoord,NucCoord) -> NucCoord
 restVect (ra,rb) = L.zipWith (-) ra rb
@@ -552,12 +553,12 @@ restVect (ra,rb) = L.zipWith (-) ra rb
 normaCoeff :: CGF -> CGF
 normaCoeff b1 = b1 { getPrimitives = newPrimitives}
   where xs = getPrimitives b1
-        newPrimitives = map ((uncurry fun ) &&& (snd) ) xs
+        newPrimitives = fmap ((uncurry fun ) &&& (snd) ) xs
         fun = \c e -> (c/) . sqrt $ (ang e) * (pi/(2*e))**1.5
         ang x = prod / (4*x)^(sum indexes)
-        prod = product $ map (\k -> facOdd (2*k -1)) indexes
+        prod = product $ fmap (\k -> facOdd (2*k -1)) indexes
         shell = getfunTyp  b1
-        indexes = map (LA.map2val mapLAngular) $ L.zip (repeat shell) [0..2]
+        indexes = fmap (LA.map2val mapLAngular) $ L.zip (repeat shell) [0..2]
 
 
 -- | Transform from the unary angular momentum representation to the corresponding integer value
