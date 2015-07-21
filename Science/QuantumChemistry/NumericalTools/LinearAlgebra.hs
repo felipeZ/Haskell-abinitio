@@ -251,22 +251,22 @@ indexDIM2toFlat !dim !x !y | x <= y = calcElem x + (y-x)
   where calcElem w = sum . takeZero w $ iterate pred dim        
 
 sumIndexTriang:: Int -> Int
-sumIndexTriang !n = (n^2 + n) `div` 2
+sumIndexTriang n = (n^2 + n) `div` 2
                    
 sumFirstIndex :: Int -> Int                   
-sumFirstIndex !n  = n + (sumIndexTriang $ pred n) + (sum [sumIndexTriang n - k | k <- [1..pred n]])                  
+sumFirstIndex n  = n + (sumIndexTriang $ pred n) + (sum [sumIndexTriang n - k | k <- [1..pred n]])                  
 
 totalFirstIndex :: Int -> Int -> Int
-totalFirstIndex !n !firstIndex = sum [sumFirstIndex (n-m) | m <- [0..pred firstIndex]]
+totalFirstIndex n firstIndex = sum [sumFirstIndex (n-m) | m <- [0..pred firstIndex]]
 
 -- | Function to  retrieve the index of the elem n, in the flatten array (DIM1)
 --   representation containing the electronic repulsion integral (ERIs) of the form  <ab|cd>
 fourIndex2Flat :: Int -> [Int] -> Int
-fourIndex2Flat !n xs@[!i,!j,!k,!l] = a0 + (selectPosition n xs)
+fourIndex2Flat n xs@(i:_) = a0 + (selectPosition n xs)
   where a0 = totalFirstIndex n i
   
 selectPosition :: Int -> [Int] -> Int
-selectPosition !n [!i,!j,!k,!l] =  
+selectPosition n [i,j,k,l] =  
   case test of
      Just 1 -> l - i
      Just 2 -> (n - i) + nfun (ipred n) (ipred k) (ipred l)

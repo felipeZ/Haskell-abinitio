@@ -40,7 +40,6 @@ Library
     , erf
     , filepath
     , gamma
-    , GaussQuadIntegration
     , hmatrix
     , mtl
     , monad-memo 
@@ -92,7 +91,6 @@ executable HsFock
     , erf
     , filepath
     , gamma
-    , GaussQuadIntegration
     , hmatrix
     , mtl
     , monad-memo
@@ -132,70 +130,70 @@ executable HsFock
 
   default-language:    Haskell2010
 
--- executable ProfileHS
---   Main-is: HsFock.hs
+executable ProfileHS
+  Main-is: HsFock.hs
   
---   ghc-options:
---     -Odph
---     -rtsopts
---     -fno-liberate-case
---     -funfolding-use-threshold1000
---     -funfolding-keeness-factor1000
---     -fllvm
---     -optlo-O3              
---     -eventlog
---     -threaded
-                  
---   build-depends:
---       async
---     , base          >= 4.5
---     , Cabal  
---     , containers
---     , deepseq
---     , directory
---     , either
---     , erf
---     , filepath
---     , gamma
---     , GaussQuadIntegration
---     , hmatrix
---     , mtl
---     , monad-memo
---     , parallel
---     , parsec
---     , primitive
---     , process
---     , repa
---     , repa-algorithms
---     , transformers
---     , vector
---     , vector-algorithms
+  ghc-options:
+    -Odph
+    -rtsopts
+    -fno-liberate-case
+    -funfolding-use-threshold1000
+    -funfolding-keeness-factor1000
+    -fllvm
+    -optlo-O3              
+    -eventlog
+    -caf-all          
+    -auto-all
+                              
+  build-depends:
+      async
+    , base          >= 4.5
+    , Cabal  
+    , containers
+    , deepseq
+    , directory
+    , either
+    , erf
+    , filepath
+    , gamma
+    , hmatrix
+    , mtl
+    , monad-memo
+    , parallel
+    , parsec
+    , primitive
+    , process
+    , repa
+    , repa-algorithms
+    , transformers
+    , vector
+    , vector-algorithms
 
---   other-modules: 
---          Science.QuantumChemistry.ConcurrencyTools.Logger
---          Science.QuantumChemistry.HartreeFock.BasisOrthogonalization
---          Science.QuantumChemistry.HartreeFock.Derivatives
---          Science.QuantumChemistry.HartreeFock.DIIS
---          Science.QuantumChemistry.HartreeFock.HartreeFock
---          Science.QuantumChemistry.HsFock.Input
---          Science.QuantumChemistry.HsFock.Options
---          Science.QuantumChemistry.HsFock.OptsCheck
---          Science.QuantumChemistry.HsFock.Project
---          Science.QuantumChemistry.HsFock.SampleProjects
---          Science.QuantumChemistry.Integrals.IntegralsEvaluation 
---          Science.QuantumChemistry.NumericalTools.Boys 
---          Science.QuantumChemistry.NumericalTools.EigenValues
---          Science.QuantumChemistry.NumericalTools.GaussElimination
---          Science.QuantumChemistry.NumericalTools.JacobiMethod
---          Science.QuantumChemistry.NumericalTools.JacobiMethodST
---          Science.QuantumChemistry.NumericalTools.LinearAlgebra 
---          Science.QuantumChemistry.NumericalTools.VectorTools
---          Science.QuantumChemistry.ParsecTools.BasisParser 
---          Science.QuantumChemistry.ParsecTools.ParsecNumbers
---          Science.QuantumChemistry.ParsecTools.ParsecText
+  other-modules: 
+         Science.QuantumChemistry.ConcurrencyTools.Logger
+         Science.QuantumChemistry.HartreeFock.BasisOrthogonalization
+         Science.QuantumChemistry.HartreeFock.Derivatives
+         Science.QuantumChemistry.HartreeFock.DIIS
+         Science.QuantumChemistry.HartreeFock.HartreeFock
+         Science.QuantumChemistry.HsFock.Input
+         Science.QuantumChemistry.HsFock.Options
+         Science.QuantumChemistry.HsFock.OptsCheck
+         Science.QuantumChemistry.HsFock.Project
+         Science.QuantumChemistry.HsFock.SampleProjects
+         Science.QuantumChemistry.Integrals.IntegralsEvaluation 
+         Science.QuantumChemistry.NumericalTools.Boys 
+         Science.QuantumChemistry.NumericalTools.EigenValues
+         Science.QuantumChemistry.NumericalTools.GaussElimination
+         Science.QuantumChemistry.NumericalTools.JacobiMethod
+         Science.QuantumChemistry.NumericalTools.JacobiMethodST
+         Science.QuantumChemistry.NumericalTools.LinearAlgebra 
+         Science.QuantumChemistry.NumericalTools.VectorTools
+         Science.QuantumChemistry.ParsecTools.BasisParser 
+         Science.QuantumChemistry.ParsecTools.ParsecNumbers
+         Science.QuantumChemistry.ParsecTools.ParsecText
          
 
---   default-language:    Haskell2010
+  default-language:    Haskell2010
 
 
 

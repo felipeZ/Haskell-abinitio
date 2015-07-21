@@ -192,7 +192,7 @@ calcIntegrals atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq 
      Notice that we are assuming a double ocupation in each Shell, therefore
     this matrix differs from the monoelectronic density matrix -}                   
 calcDensity :: Monad m => Array U DIM2 Double -> OccupiedShells -> m FlattenChargeDensity
-calcDensity !arr !occupied =
+calcDensity !arr occupied =
    do   let (Z :. dim  :. _)  = extent arr
             flat = (dim^2 + dim)`div`2
         computeP

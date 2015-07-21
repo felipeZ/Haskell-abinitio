@@ -41,10 +41,13 @@ module Science.QuantumChemistry.NumericalTools.Boys where
 
 import Data.Foldable (mapM_)
 import Data.Number.Erf
+import Data.Vector.Unboxed as U
 import Math.Gamma
-import Math.GaussianQuadratureIntegration as GQI
 import Prelude hiding (mapM_)
 
+-- Internal modules
+import Science.QuantumChemistry.GlobalTypes (VecUnbox)
+import Science.QuantumChemistry.NumericalTools.PointsWeights 
 
 -- Boys function
 boysF :: Double -> Double -> Double
@@ -88,43 +91,58 @@ kummer a b z err = gammaFactor * integralPart
         fun               = (\t -> (e ** (z * t)) * (1-t) ** (b-a-1) * t ** (a-1))
         e                 = exp 1
         integrator err
-                | err > 0.1   =  GQI.nIntegrate128
-                | err > 0.01  =  GQI.nIntegrate256
-                | err > 0.001 =  GQI.nIntegrate512
-                | otherwise   = GQI.nIntegrate1024
+                | err > 0.1   = nIntegrate128
+                | err > 0.01  = nIntegrate256
+                | err > 0.001 = nIntegrate512
+                | otherwise   = nIntegrate1024
 {- INLINE kummer-}
 
---  Test values from [2] for various proposed aproximations of the boys Function
---  Equations 3 and 6
-testdata :: [(Double,Double,Double,Double)]
-testdata = 
-    [
-         (  8,     16, 4.02308592502660e-07, 4.02308592502660e-07 )
-        ,( 15,     27, 1.08359515555596e-11, 1.08359515555596e-11 )
-        ,( 20,     30, 1.37585444267909e-03, 1.37585444267909e-03 )
-        ,( 25,     13, 8.45734447905704e-08, 8.45734447905704e-08 )
-        ,( 31,     34, 2.90561943091301e-16, 2.90561943091301e-16 )
-        ,( 11,     38, 4.04561442253925e-12, 4.04561442253925e-12 )
-        ,( 42,     32, 5.02183610419087e-16, 5.02183610419086e-16 )
-        ,( 75,     30, 1.01429517438537e-15, 1.01429517438537e-15 )
-        ,(100,     33, 3.42689684943483e-17, 3.42689684943483e-17 )
-        ,( 20, 1.4e-3, 2.43577075309547e-02, 2.43577075309547e-02 )
-        ,( 45, 6.4e-5, 1.09883228385254e-02, 1.09883228385254e-02 )
-        ,(100, 2.6e-7, 4.97512309732144e-03, 4.97512309732144e-03 )
-    ]
+-- --  Test values from [2] for various proposed aproximations of the boys Function
+-- --  Equations 3 and 6
+-- testdata :: [(Double,Double,Double,Double)]
+-- testdata = 
+--     [
+--          (  8,     16, 4.02308592502660e-07, 4.02308592502660e-07 )
+--         ,( 15,     27, 1.08359515555596e-11, 1.08359515555596e-11 )
+--         ,( 20,     30, 1.37585444267909e-03, 1.37585444267909e-03 )
+--         ,( 25,     13, 8.45734447905704e-08, 8.45734447905704e-08 )
+--         ,( 31,     34, 2.90561943091301e-16, 2.90561943091301e-16 )
+--         ,( 11,     38, 4.04561442253925e-12, 4.04561442253925e-12 )
+--         ,( 42,     32, 5.02183610419087e-16, 5.02183610419086e-16 )
+--         ,( 75,     30, 1.01429517438537e-15, 1.01429517438537e-15 )
+--         ,(100,     33, 3.42689684943483e-17, 3.42689684943483e-17 )
+--         ,( 20, 1.4e-3, 2.43577075309547e-02, 2.43577075309547e-02 )
+--         ,( 45, 6.4e-5, 1.09883228385254e-02, 1.09883228385254e-02 )
+--         ,(100, 2.6e-7, 4.97512309732144e-03, 4.97512309732144e-03 )
+--     ]
 
-test :: IO ()
-test = do
-    putStrLn "Boys Function Fm(x) comparison against data from reference [2]"
-    mapM_ report testdata
-    where
-        report :: (Double,Double,Double,Double) -> IO ()
-        report (a,b,c,d) = do
-            let ours = boysF a b
-            putStrLn $ "\tm = " ++ (show a) 
-                    ++ "\tx = " ++ (show b) 
-                    ++ "\tEq(3) = " ++ (show c) 
-                    ++ "\tEq(6) = " ++ (show d) 
-                    ++ "\tours = " ++ (show ours)
+-- test :: IO ()
+-- test = do
+--     putStrLn "Boys Function Fm(x) comparison against data from reference [2]"
+--     mapM_ report testdata
+--     where
+--         report :: (Double,Double,Double,Double) -> IO ()
+--         report (a,b,c,d) = do
+--             let ours = boysF a b
+--             putStrLn $ "\tm = " ++ (show a) 
+--                     ++ "\tx = " ++ (show b) 
+--                     ++ "\tEq(3) = " ++ (show c) 
+--                     ++ "\tEq(6) = " ++ (show d) 
+--                     ++ "\tours = " ++ (show ours)
               
                   
+
+baseCase :: (Double -> Double) -> VecUnbox -> VecUnbox -> Double
+baseCase func points weights = U.sum $ U.zipWith (\x w -> w*(func x + func(-x))) points weights
+
+nIntegrate128 :: (Double -> Double) -> Double -> Double -> Double
+nIntegrate128 func a b = 0.5*(b-a) * (baseCase (\x -> func $ 0.5*((b-a)*x+b+a)) points128 weights128)
+
+nIntegrate256 :: (Double -> Double) -> Double -> Double -> Double
+nIntegrate256 func a b = 0.5*(b-a) * (baseCase (\x -> func $ 0.5*((b-a)*x+b+a)) points256 weights256)
+
+nIntegrate512 :: (Double -> Double) -> Double -> Double -> Double
+nIntegrate512 func a b = 0.5*(b-a) * (baseCase (\x -> func $ 0.5*((b-a)*x+b+a)) points512 weights512)
+
+nIntegrate1024 :: (Double -> Double) -> Double -> Double -> Double
+nIntegrate1024 func a b = 0.5*(b-a) * (baseCase (\x -> func $ 0.5*((b-a)*x+b+a)) points1024 weights1024)
