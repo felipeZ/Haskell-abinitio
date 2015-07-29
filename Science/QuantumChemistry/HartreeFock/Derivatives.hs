@@ -25,7 +25,7 @@ import Prelude hiding (sum)
 import Science.QuantumChemistry.GlobalTypes as G
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra as LA
 import Science.QuantumChemistry.HartreeFock.HartreeFock
-import Science.QuantumChemistry.Integrals.IntegralsEvaluation 
+-- import Science.QuantumChemistry.Integrals.IntegralsEvaluation 
 
 -- ===========> Local Types <====================
 

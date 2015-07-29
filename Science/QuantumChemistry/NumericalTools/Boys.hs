@@ -63,6 +63,7 @@ boysF n x = k `seq` k / d
         z = -x
         d = (2 * n) + 1
 
+
 -- Boys function Upward Recurrence as stated on [2]
 -- boysF2 0 x = 
 -- boysF2 m x = a * b
@@ -95,7 +96,7 @@ kummer a b z err = gammaFactor * integralPart
                 | err > 0.01  = nIntegrate256
                 | err > 0.001 = nIntegrate512
                 | otherwise   = nIntegrate1024
-{- INLINE kummer-}
+{-# INLINE kummer #-}
 
 -- --  Test values from [2] for various proposed aproximations of the boys Function
 -- --  Equations 3 and 6
@@ -134,15 +135,20 @@ kummer a b z err = gammaFactor * integralPart
 
 baseCase :: (Double -> Double) -> VecUnbox -> VecUnbox -> Double
 baseCase func points weights = U.sum $ U.zipWith (\x w -> w*(func x + func(-x))) points weights
+{-# INLINE baseCase #-}
 
 nIntegrate128 :: (Double -> Double) -> Double -> Double -> Double
 nIntegrate128 func a b = 0.5*(b-a) * (baseCase (\x -> func $ 0.5*((b-a)*x+b+a)) points128 weights128)
+{-# INLINE nIntegrate128 #-}
 
 nIntegrate256 :: (Double -> Double) -> Double -> Double -> Double
 nIntegrate256 func a b = 0.5*(b-a) * (baseCase (\x -> func $ 0.5*((b-a)*x+b+a)) points256 weights256)
+{-# INLINE nIntegrate256 #-}
 
 nIntegrate512 :: (Double -> Double) -> Double -> Double -> Double
 nIntegrate512 func a b = 0.5*(b-a) * (baseCase (\x -> func $ 0.5*((b-a)*x+b+a)) points512 weights512)
+{-# INLINE nIntegrate512 #-}
 
 nIntegrate1024 :: (Double -> Double) -> Double -> Double -> Double
 nIntegrate1024 func a b = 0.5*(b-a) * (baseCase (\x -> func $ 0.5*((b-a)*x+b+a)) points1024 weights1024)
+{-# INLINE nIntegrate1024 #-}

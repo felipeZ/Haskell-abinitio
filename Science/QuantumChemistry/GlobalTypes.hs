@@ -231,7 +231,7 @@ fromCartLabel k | k == Ax = 0
               
 -- ===========> Auxiliar Functions <======
 
--- | Map from Unary Angular momenta representation to it corresponding integer
+-- | Map from Unary Angular momenta representation to its corresponding integer
 mapLAngular :: M.Map (Funtype,Int) Int
 mapLAngular = M.fromList $ 
             [((S,0),0),((S,1),0),((S,2),0)

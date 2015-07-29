@@ -6,7 +6,9 @@ import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
 import Science.QuantumChemistry.NumericalTools.GaussElimination
 import Science.QuantumChemistry.NumericalTools.JacobiMethod   (jacobiP)
 import Science.QuantumChemistry.NumericalTools.JacobiMethodST (jacobiST)
-import Science.QuantumChemistry.NumericalTools.LinearAlgebra        
+import Science.QuantumChemistry.NumericalTools.LinearAlgebra
+import Science.QuantumChemistry.NumericalTools.TableBoys
+import Science.QuantumChemistry.NumericalTools.Utils
 import Science.QuantumChemistry.NumericalTools.VectorTools
 
     

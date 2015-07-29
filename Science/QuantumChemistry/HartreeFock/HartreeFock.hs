@@ -33,7 +33,8 @@ import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix as R
 import Data.Foldable
 import Data.List as L hiding (sum)
-import qualified Data.Map as M
+import qualified Data.Map.Lazy   as ML
+import qualified Data.Map.Strict as M
 import qualified Data.Sequence as S
 import qualified Data.Vector.Unboxed as VU
 import Prelude hiding (sum)
@@ -42,8 +43,8 @@ import Text.Printf
 
 
 -- internal Modules
+import Science.QuantumChemistry.ConcurrencyTools.Logger
 import Science.QuantumChemistry.HartreeFock.BasisOrthogonalization (symmOrtho)
-import Science.QuantumChemistry.NumericalTools.Boys                (boysF)
 import Science.QuantumChemistry.HartreeFock.DIIS                   (DataDIIS(..)
                                                                    ,calcErrorMtx
                                                                    ,diis
@@ -51,9 +52,11 @@ import Science.QuantumChemistry.HartreeFock.DIIS                   (DataDIIS(..)
                                                                    ,convergeDIIS)
 import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.Integrals.IntegralsEvaluation 
+import Science.QuantumChemistry.NumericalTools.Boys        (boysF)
 import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra
-import Science.QuantumChemistry.ConcurrencyTools.Logger
+import Science.QuantumChemistry.NumericalTools.TableBoys   (Boys,generateGrid)
+
 
 
 -- ===============> MODULE HARTREE-FOCK <========================================
@@ -75,12 +78,13 @@ scfHF atoms charge logger = do
             occupied   = floor . (/2) . (subtract charge) . sum 
                                 $ fmap (getZnumber) atoms
             dataDIIS   = DataDIIS S.empty S.empty 5
-            integrals  = calcIntegrals atoms        
-        core      <- hcore atoms
+            gridBoys   = generateGrid 12 0.1 -- ^gridBoys mMax dx, where mMax is the maximum order of the boys function and dx the grid delta
+            integrals  = calcIntegrals gridBoys atoms
+        core      <- hcore gridBoys atoms
         s         <- mtxOverlap $ atoms
         xmatrix   <- symmOrtho <=< triang2DIM2 $ s
         density   <- harrisFunctional core xmatrix integrals occupied
-        scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 20 OFF logger
+        scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 30 OFF logger
 
 -- | Driver to run the DIIS procedure        
 scfDIIS :: [AtomData]
@@ -159,14 +163,11 @@ sortKeys [i,j,k,l] = let l1 = L.sort [i,j]
                      in if l1 <= l2 then l1 L.++ l2 else l2 L.++ l1
                                               
 -- | Compute the electronic integrals                                 
-calcIntegrals ::  [AtomData] -> Array U DIM1 Double
---calcIntegrals atoms = fromListUnboxed (ix1 $ length cartProd) $ parChunks 4 funEval cartProd 
+calcIntegrals :: ML.Map Boys Double ->  [AtomData] -> Array U DIM1 Double
+calcIntegrals gridBoys atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval cartProd 
 
-calcIntegrals atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval cartProd 
-
-  where parChunks n f =  withStrategy (parListChunk n rdeepseq ) . fmap f
-        dim     = pred . sum . fmap (length . getBasis) $ atoms
-        funEval = evalIntbykey atoms 
+  where dim      = pred . sum . fmap (length . getBasis) $ atoms
+        funEval  = evalIntbykey gridBoys atoms 
         cartProd = do
           i <- [0..dim]
           j <- [i..dim]

@@ -8,9 +8,8 @@ module Science.QuantumChemistry.HsFock.SampleProjects where
 
 import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.HartreeFock.HartreeFock
-import Science.QuantumChemistry.Integrals.IntegralsEvaluation (normaCoeff)
 import Science.QuantumChemistry.HsFock.Project
-
+import Science.QuantumChemistry.NumericalTools.Utils (normGlobal)
 
 
 project :: String -> String -> ProjectData
@@ -27,8 +26,8 @@ project "HHe+" "STO-3G" =
     where
         sH = [(0.444635,0.168856),(0.535328,0.623913),(0.154329,3.42525)]
         sHe =[ (0.44463454,0.31364979),(0.53532814,1.15892300),(0.15432897,6.36242139)]
-        baseH  = normaCoeff`fmap` [CGF sH S]
-        baseHe = normaCoeff`fmap` [CGF sHe S]
+        baseH  = normGlobal`fmap` [CGF sH S]
+        baseHe = normGlobal`fmap` [CGF sHe S]
 
         
 project "CO" "STO-3G" = 
@@ -48,8 +47,8 @@ project "CO" "STO-3G" =
         sC1 = [(0.1543289673,0.7161683735e2),(0.5353281423,0.1304509632e2),(0.4446345422,0.3530512160e1)]
         sC2 = [(-0.9996722919e-1,0.2941249355e1),(0.3995128261,0.6834830964),(0.7001154689,0.2222899159)]
         pC =  [(0.1559162750,0.2941249355e1),(0.6076837186,0.6834830964),(0.3919573931,0.2222899159)]
-        baseC  = normaCoeff`fmap` [CGF sC1 S, CGF sC2 S,CGF pC Px, CGF pC Py, CGF pC Pz ]
-        baseO = normaCoeff`fmap` [CGF sO1 S, CGF sO2 S, CGF pO Px, CGF pO Py, CGF pO Pz]
+        baseC  = normGlobal`fmap` [CGF sC1 S, CGF sC2 S,CGF pC Px, CGF pC Py, CGF pC Pz ]
+        baseO = normGlobal`fmap` [CGF sO1 S, CGF sO2 S, CGF pO Px, CGF pO Py, CGF pO Pz]
         
        
 project "water" "STO-3G" =
@@ -68,8 +67,8 @@ project "water" "STO-3G" =
         sO2 = [(-0.09996723,5.0331513),(0.39951283,1.1695961),(0.7001154689,0.3803890)]
         pO = [(0.15591627,5.0331513),(0.60768372,1.1695961),(0.39195739,0.3803890)]
         sH = [(0.444635,0.168856),(0.535328,0.623913),(0.154329,3.42525)]
-        baseH = normaCoeff`fmap` [CGF sH S]
-        baseO = normaCoeff`fmap` [CGF sO1 S, CGF sO2 S, CGF pO Px, CGF pO Py, CGF pO Pz]
+        baseH = normGlobal`fmap` [CGF sH S]
+        baseO = normGlobal`fmap` [CGF sO1 S, CGF sO2 S, CGF pO Px, CGF pO Py, CGF pO Pz]
 
         
 project "water" "6-31G*" =
@@ -92,5 +91,5 @@ project "water" "6-31G*" =
         dO  = [(1.0,0.8000000000)]
         sH1 = [(0.3349460434e-1,0.1873113696e2),(0.2347269535,0.2825394365e1),(0.8137573261,0.6401216923)]
         sH2 = [(1.0,0.1612777588)]
-        baseH = normaCoeff`fmap` [CGF sH1 S, CGF sH2 S]
-        baseO = normaCoeff`fmap` [CGF sO1 S, CGF sO2 S, CGF pO1 Px, CGF pO1 Py, CGF pO1 Pz, CGF sO3 S, CGF pO2 Px, CGF pO2 Py, CGF pO2 Pz, CGF dO Dxx, CGF dO Dyy, CGF dO Dzz, CGF dO Dxy,CGF dO Dxz, CGF dO Dyz]
+        baseH = normGlobal`fmap` [CGF sH1 S, CGF sH2 S]
+        baseO = normGlobal`fmap` [CGF sO1 S, CGF sO2 S, CGF pO1 Px, CGF pO1 Py, CGF pO1 Pz, CGF sO3 S, CGF pO2 Px, CGF pO2 Py, CGF pO2 Pz, CGF dO Dxx, CGF dO Dyy, CGF dO Dzz, CGF dO Dxy,CGF dO Dxz, CGF dO Dyz]
