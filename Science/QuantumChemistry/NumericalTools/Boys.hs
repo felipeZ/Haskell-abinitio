@@ -39,11 +39,11 @@
 
 module Science.QuantumChemistry.NumericalTools.Boys where
 
-import Data.Foldable (mapM_)
+import Data.Foldable (mapM_,product)
 import Data.Number.Erf
-import Data.Vector.Unboxed as U
+import qualified Data.Vector.Unboxed as U
 import Math.Gamma
-import Prelude hiding (mapM_)
+import Prelude hiding (mapM_,product)
 
 -- Internal modules
 import Science.QuantumChemistry.GlobalTypes (VecUnbox)
@@ -52,6 +52,7 @@ import Science.QuantumChemistry.NumericalTools.PointsWeights
 -- Boys function
 boysF :: Double -> Double -> Double
 boysF 0 x
+    | x > 50    = asymptBoysF 0 x
     | x > 0.0e-5 = 0.5 * sqrt (pi/x) * erf (sqrt x)
     | otherwise  = 1.0
 
@@ -62,6 +63,23 @@ boysF n x = k `seq` k / d
         b = n + 1.5
         z = -x
         d = (2 * n) + 1
+
+asymptBoysF ::  Double -> Double -> Double
+asymptBoysF m x = (fn / 2**(m+1)) * (sqrt $ pi / x ** (2*m +1))
+ where fn = facOdd . floor $ 2*m -1 
+
+facOdd ::Int -> Double
+facOdd  i | i `rem`2 == 0  = error "Factorial Odd function required an odd integer as input"
+          | otherwise  = case compare i 2 of
+                             LT -> 1
+                             GT-> let k = (1 + i) `div ` 2
+                                  in (fromIntegral $ fac (2*k)) /  (2.0^k * (fromIntegral $ fac k))
+
+-- | Factorial function
+fac :: Int -> Int
+fac i | i < 0   = error "The factorial function is defined only for natural numbers"
+      | i == 0  = 1
+      | otherwise = product [1..i]
 
 
 -- Boys function Upward Recurrence as stated on [2]

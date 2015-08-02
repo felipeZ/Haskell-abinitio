@@ -55,7 +55,7 @@ import Science.QuantumChemistry.Integrals.IntegralsEvaluation
 import Science.QuantumChemistry.NumericalTools.Boys        (boysF)
 import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra
-import Science.QuantumChemistry.NumericalTools.TableBoys   (Boys,generateGrid)
+import Science.QuantumChemistry.NumericalTools.TableBoys   (Boys,generateGridBoys)
 
 
 
@@ -78,7 +78,7 @@ scfHF atoms charge logger = do
             occupied   = floor . (/2) . (subtract charge) . sum 
                                 $ fmap (getZnumber) atoms
             dataDIIS   = DataDIIS S.empty S.empty 5
-            gridBoys   = generateGrid 12 0.1 -- ^gridBoys mMax dx, where mMax is the maximum order of the boys function and dx the grid delta
+            gridBoys   = generateGridBoys 0.1 -- ^gridBoys dx, where mMax is the maximum order of the boys function and dx the grid delta
             integrals  = calcIntegrals gridBoys atoms
         core      <- hcore gridBoys atoms
         s         <- mtxOverlap $ atoms

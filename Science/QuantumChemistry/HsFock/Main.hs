@@ -110,27 +110,27 @@ acceptedOptions =
 --     print $ getFock result
 
 
-doSCF :: Options -> IO ()
-doSCF optsR = do
-    logger <- initLogger "CO_sto_3g.out"
-    let projectdata = project "CO" "STO-3G"
-        charge = 0
-        atom1 = AtomData r1 baseO  8.0
-        atom2 = AtomData r2 baseC  6.0
-        [r1, r2] = atomList projectdata
-        [baseO,baseC] = pBasis projectdata
-    logMessage logger "Starting main SCF calculations, please wait....\n"
-    logMessage logger "number of shells: "
-    logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2]
-    hartreeData <- scfHF [atom1,atom2] charge $ logMessage logger
-    logMessage logger "Hartree-Fock has succeeded !!!\n"
-    logMessage logger "HF\n"
-    logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
-    -- logMessage logger "Calculating the gradient\n"
-    -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
-    -- logMessage logger $ show gradient
-    logMessage logger "The answer is 42!!"
-    logStop logger
+-- doSCF :: Options -> IO ()
+-- doSCF optsR = do
+--     logger <- initLogger "CO_sto_3g.out"
+--     let projectdata = project "CO" "STO-3G"
+--         charge = 0
+--         atom1 = AtomData r1 baseO  8.0
+--         atom2 = AtomData r2 baseC  6.0
+--         [r1, r2] = atomList projectdata
+--         [baseO,baseC] = pBasis projectdata
+--     logMessage logger "Starting main SCF calculations, please wait....\n"
+--     logMessage logger "number of shells: "
+--     logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2]
+--     hartreeData <- scfHF [atom1,atom2] charge $ logMessage logger
+--     logMessage logger "Hartree-Fock has succeeded !!!\n"
+--     logMessage logger "HF\n"
+--     logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
+--     -- logMessage logger "Calculating the gradient\n"
+--     -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
+--     -- logMessage logger $ show gradient
+--     logMessage logger "The answer is 42!!"
+--     logStop logger
 
 
 -- doSCF :: Options -> IO ()
@@ -155,30 +155,30 @@ doSCF optsR = do
 --     logStop logger
 
 
--- doSCF :: Options -> IO ()
--- doSCF optsR = do
---     logger <- initLogger "water_sto_3g.out"
---     let projectdata = project "water" "STO-3G"
---         charge = 0
---         atom1 = AtomData r1 baseO 8.0
---         atom2 = AtomData r2 baseH 1.0
---         atom3 = AtomData r3 baseH 1.0
---         [r1, r2, r3] = atomList projectdata
---         [baseH,baseO] = pBasis projectdata
---     logMessage logger "Starting main SCF calculations, please wait....\n"
---     logMessage logger "number of shells: "
---     logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2,atom3]
---     mtxS <- mtxOverlap  [atom1,atom2,atom3]
---     logMessage logger $ show mtxS
---     hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
---     logMessage logger "Hartree-Fock has succeeded !!!\n"
---     logMessage logger "HF\n"
---     logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
---     -- logMessage logger "Calculating the gradient\n"
---     -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
---     -- logMessage logger $ show gradient
---     logMessage logger "The answer is 42!!"
---     logStop logger    
+doSCF :: Options -> IO ()
+doSCF optsR = do
+    logger <- initLogger "water_sto_3g.out"
+    let projectdata = project "water" "STO-3G"
+        charge = 0
+        atom1 = AtomData r1 baseO 8.0
+        atom2 = AtomData r2 baseH 1.0
+        atom3 = AtomData r3 baseH 1.0
+        [r1, r2, r3] = atomList projectdata
+        [baseH,baseO] = pBasis projectdata
+    logMessage logger "Starting main SCF calculations, please wait....\n"
+    logMessage logger "number of shells: "
+    logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2,atom3]
+    mtxS <- mtxOverlap  [atom1,atom2,atom3]
+    logMessage logger $ show mtxS
+    hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
+    logMessage logger "Hartree-Fock has succeeded !!!\n"
+    logMessage logger "HF\n"
+    logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
+    -- logMessage logger "Calculating the gradient\n"
+    -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
+    -- logMessage logger $ show gradient
+    logMessage logger "The answer is 42!!"
+    logStop logger    
 
 
 -- ============================================= No user serviceable parts beyond this point! ====================================================
