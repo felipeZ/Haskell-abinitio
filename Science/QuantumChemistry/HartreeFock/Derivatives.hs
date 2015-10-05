@@ -71,7 +71,7 @@ calcIntegralsTerm !atoms !hfData !norbital = do
                           dJK_s = dJKuvrs_dXa ! (Z:. 3 :. uvrs)
                       in totalkr * duvrs * (dJK_u + dJK_v + dJK_r + dJK_s)
 
-  where dim = 3 * (length atoms)
+  where dim = 3 * length atoms
         dimTriang = (norbital^2 + norbital) `div`2
         density = getDensity hfData
         calcij i j = let [u,v] = fromIntegral `fmap` [i,j]
@@ -99,8 +99,8 @@ calcJKDerivatives !atoms !norbital = computeUnboxedP . fromFunction (Z :. dimCar
           l <- [k..dim]
           let xs = [i,j,k,l]
           guard (condition xs)
-          return $ [i,j,k,l]
-        condition = \e -> case compare e $ sortKeys e of
+          return [i,j,k,l]
+        condition e =  case compare e $ sortKeys e of
                                EQ -> True
                                otherwise -> False
 
@@ -135,7 +135,7 @@ calcCoreDerivatives :: Monad m => [AtomData] -> Int -> m Matrix
 calcCoreDerivatives !atoms !norbital = computeUnboxedP . fromFunction (Z :. dimCart :. dimTriang) $
   \(Z:. k :. m) -> let calcIndex = LA.calcCoordCGF atoms
                        (Z:.i:.j) = LA.indexFlat2DIM2 norbital $ ix1 m
-                       [(r1,cgf1),(r2,cgf2)] = fmap calcIndex $ [i,j]
+                       [(r1,cgf1),(r2,cgf2)] = calcIndex <$> [i,j]
                        dx = G.toCartLabel $ k `rem` 3
                        rA = getCoord $ atoms !!  (k`div`3)
                        [derv_cgf1,derv_cgf2] = fmap (calcDervCGF dx) [cgf1,cgf2]
@@ -146,7 +146,7 @@ calcCoreDerivatives !atoms !norbital = computeUnboxedP . fromFunction (Z :. dimC
                    in firstTerm + secondTerm + thirdTerm
 
   where dimTriang = (norbital^2 + norbital) `div`2
-        dimCart   = 3 * (length atoms)        
+        dimCart   = 3 * length atoms
         
 coreterm1 :: [AtomData] -> NucCoord -> (NucCoord,CGF) -> [CGF] -> Double
 coreterm1 atoms !r1 t2@(!r2,!cgf2) !derv_cgf1 =
@@ -180,7 +180,7 @@ calcOverlapTerm !atoms !hfdata !norbital = do
                                  kr = 1- (kronecker u v) / 2
                              in kr * wuv * suv
                                     
-  where dim = 3 * (length atoms)
+  where dim = 3 * length atoms
 {-# INLINE calcOverlapTerm #-}
 
 -- the <<||>> operator is defined as the sijContracted function
@@ -199,7 +199,7 @@ calcOverlapDerivatives !atoms !norbital =  computeUnboxedP . fromFunction (Z :. 
                         return $  (r1,derv1) <<||>> (r2,cgf2) + (r1,cgf1) <<||>> (r2,derv2)
 
   where dimTriang = (norbital^2 + norbital) `div`2
-        dimCart   = 3 * (length atoms) 
+        dimCart   = 3 * length atoms
   
 -- | Matrix which elements multiply the derivatives of the overlap matrix
 calcWmatrix :: Monad m =>  HFData -> Int -> m FlattenMatrix       

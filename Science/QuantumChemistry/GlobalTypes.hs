@@ -233,7 +233,7 @@ fromCartLabel k | k == Ax = 0
 
 -- | Map from Unary Angular momenta representation to its corresponding integer
 mapLAngular :: M.Map (Funtype,Int) Int
-mapLAngular = M.fromList $ 
+mapLAngular = M.fromList 
             [((S,0),0),((S,1),0),((S,2),0)
             ,((Px,0),1),((Px,1),0),((Px,2),0)
             ,((Py,0),0),((Py,1),1),((Py,2),0)
@@ -260,7 +260,7 @@ mapLAngular = M.fromList $
 --   the gaussian functions (total angular momentum ) to 
 --   the unary data representation
 mapAngMomentum :: M.Map [Int] Funtype
-mapAngMomentum = M.fromList $
+mapAngMomentum = M.fromList 
               [([0,0,0],S)
               ,([1,0,0],Px),([0,1,0],Py),([0,0,1],Pz)
               ,([2,0,0],Dxx),([1,0,1],Dxz),([1,1,0],Dxy),([0,2,0],Dyy),([0,1,1],Dyz),([0,0,2],Dzz)
@@ -271,7 +271,7 @@ mapAngMomentum = M.fromList $
 --  Integrals representing the exponents of 
 --   the cartesian gaussian functions (total angular momentum )
 mapAxesMomentum :: M.Map Funtype [Int]
-mapAxesMomentum = M.fromList $
+mapAxesMomentum = M.fromList 
               [(S  ,[0,0,0])
               ,(Px ,[1,0,0])
               ,(Py ,[0,1,0])
@@ -307,7 +307,7 @@ getAxesMom symb =
 -- ===================> Map of the atomic element to nuclear charge <=============
 -- | String to Nuclear Charge
 atom2charge :: M.Map String Int
-atom2charge = M.fromList $
+atom2charge = M.fromList 
              [("H",1),("He",2),("Li",3),("Be",4),("B",5),
               ("C",6),("N",7),("O",8),("F",9),("Ne",10),
               ("Na",11),("Mg",12)]

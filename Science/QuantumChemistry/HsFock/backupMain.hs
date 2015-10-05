@@ -7,7 +7,6 @@
 
 module Science.QuantumChemistry.HsFock.Main where
 
--- =============================> Standard and third party libraries <===============================
 import Data.Foldable (find,mapM_)
 import Data.Maybe ( fromMaybe )
 import Control.Concurrent
@@ -28,7 +27,7 @@ import Data.Version (showVersion)
 import Distribution.Version
 import Paths_HartreeFock as HsApp
 
--- =================> Internal Modules <======================
+-- Internal Modules 
 import Science.QuantumChemistry.ConcurrencyTools.Logger    -- Logger functions 
 import Science.QuantumChemistry.GlobalTypes
 

@@ -31,7 +31,7 @@ Library
 
   build-depends:
       async
-    , base          >= 4.5
+    , base   == 4.8.*        
     , Cabal  
     , containers
     , deepseq
@@ -47,10 +47,10 @@ Library
     , parsec
     , primitive
     , process
-    , repa
+    , repa     == 3.4.*
     , repa-algorithms
     , transformers
-    , vector
+    , vector   == 0.10.* 
     , vector-algorithms
 
   other-extensions:
@@ -82,7 +82,7 @@ executable HsFock
 
   build-depends:
       async
-    , base          >= 4.5
+    , base == 4.8.*
     , Cabal  
     , containers
     , deepseq
@@ -98,10 +98,10 @@ executable HsFock
     , parsec
     , primitive
     , process
-    , repa
-    , repa-algorithms
+    , repa            == 3.4.*
+    , repa-algorithms == 3.4.*
     , transformers
-    , vector
+    , vector          == 0.10.*
     , vector-algorithms
 
   other-modules: 

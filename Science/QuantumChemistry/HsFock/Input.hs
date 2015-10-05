@@ -51,14 +51,14 @@ getInfo input = do
         f2U (c:cs) = toUpper c : cs
           
 readerCoord :: [String] -> [(String,[Double])]
-readerCoord = map ((\(x:xs) -> ( x, fun xs)) . words) . tail
-  where fun w = map readDouble w
+readerCoord = fmap ((\(x:xs) -> ( x, fun xs)) . words) . tail
+  where fun = fmap readDouble 
 
 breaker :: [[String]] -> ([String],[String])
-breaker = break ("coordinates"==) . filter (not . null) . (map (map toLower)) . concat
+breaker = break ("coordinates"==) . filter (not . null) . fmap (fmap toLower) . concat
 
 toks :: [String] ->[(String,String)]
-toks = map (second tail .  break ('=' ==))
+toks = fmap (second tail .  break ('=' ==))
 
 readBasis :: String -> [Basis]
 readBasis = const [[CGF sto3gHe S]]
@@ -66,7 +66,7 @@ readBasis = const [[CGF sto3gHe S]]
 
 -- ============> RAW PARSER <===================
 rawParser :: String -> Either ParseError [[String]]
-rawParser input = parse body "Error in the input" input
+rawParser = parse body "Error in the input"
 
 body :: GenParser Char st [[String]]
 body = sepBy line (char '\n')

@@ -33,11 +33,10 @@ data Boys = Boys Double Double deriving (Eq,Ord) -- ^represents the function f(m
 
 
 {- |
-xThe boys function is cached on the fly using a lazy map that store the points of a grid.
-The point f(m,x) is calculated as using a Taylor series expansion around xk,
+We can expand the Boys function as a 6 terms Taylor series around xk,
 f(m,x) = f(m,xk + dx) = f(m,xk) -f(m+1,xk)*dx + 0.5*f(m+2,xk)(dx)^2 -1/6 * f(m+3,xk)(dx)^2 +
          1/24 * f(m+4,xk)(dx)^2
- 
+Using the Taylor series we can generate a grid of xk points [0.1, 0.2, ..xk,.. xmax] in mmax + 6 dimesions, where xmax and mmax are the maximum value of x and m, respectively. Basically, the idea is to populate the nodes of the grid calling the expensive function f and the value of the function between nodes are calculated using the above Taylor series expansion.
 -}
 
 boysTaylor :: Map Boys Double -> Double -> Double -> Double
@@ -49,11 +48,15 @@ boysTaylor grid m x = (fun m xk) - (fun (m+1) xk)*dx + 0.5*(fun (m+2) xk)*dx^2 -
         calcClosestPoint r = fromIntegral  $ floor $ x /delta
        
 
+{- |
+Generate a grid where each node is a thunk of the expensive function boysF. Now every time that we need to calculate boysF we call funTaylor instead of f. Notice that's this is a virtual grid in the sense that every time that we call funTaylor m x, only the points involved in the Taylor series are evaluated while the rest of the grid remains unevaluated.
+
+-}
 generateGridBoys ::  Double -> Map Boys Double
 generateGridBoys delta = M.fromList $ zip keys val 
   where keys = Boys <$> [fromIntegral x | x <- [0..mMax]] <*> [delta*fromIntegral(i) | i <- [0..xMax]]
         val  = fmap (\(Boys m x) -> boysF m x) keys
-        mMax = 12
+        mMax = 14
         xMax = 1000
          
 calcBoys :: Map Boys Double -> Double -> Double -> Double

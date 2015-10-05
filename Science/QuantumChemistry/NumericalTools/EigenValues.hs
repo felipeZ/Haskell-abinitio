@@ -3,18 +3,16 @@ module Science.QuantumChemistry.NumericalTools.EigenValues (
                    eigenSolve
                    ) where
 
+-- =============================> Standard and third party libraries <===============================
 import Control.Arrow ((***))
 import Data.Array.Repa as R
-import qualified Data.Packed.Vector as HV
-import qualified Data.Packed.Matrix as HM
-
 import Data.Vector.Storable (convert)
 import qualified Data.Vector.Unboxed as U
+import qualified Numeric.LinearAlgebra.Data as ND
 import Numeric.LinearAlgebra.HMatrix (eigSH')
 
 
--- -----------------> Internal Modules <----------
-
+-- =================> Internal Modules <======================
 import Science.QuantumChemistry.GlobalTypes (VecUnbox)
 import Science.QuantumChemistry.NumericalTools.VectorTools (sortEigenData)
 
@@ -26,20 +24,20 @@ eigenSolve arr = (vs, fromUnboxed (extent arr) mtx )
 
 
 -- ---------------------> <------------------------------
-vecUnbox2HV :: VecUnbox -> HV.Vector Double 
+vecUnbox2HV :: VecUnbox -> ND.Vector Double 
 vecUnbox2HV = convert 
 
-hv2VecUnbox :: HV.Vector Double -> VecUnbox
+hv2VecUnbox :: ND.Vector Double -> VecUnbox
 hv2VecUnbox = convert 
 
-repa2HM :: Array U DIM2 Double -> HM.Matrix Double 
-repa2HM arr = HM.reshape dim . convert . toUnboxed $ arr 
+repa2HM :: Array U DIM2 Double -> ND.Matrix Double 
+repa2HM arr = ND.reshape dim . convert . toUnboxed $ arr 
 
  where (Z :. dim :. _) = extent arr
 
-hm2Repa :: HM.Matrix Double -> Array U DIM2 Double
-hm2Repa mtx = fromUnboxed (ix2 dim dim) . convert . HM.flatten $ mtx
- where dim = HM.rows mtx
+hm2Repa :: ND.Matrix Double -> Array U DIM2 Double
+hm2Repa mtx = fromUnboxed (ix2 dim dim) . convert . ND.flatten $ mtx
+ where dim = ND.rows mtx
 
-hm2VecUnbox :: HM.Matrix Double -> VecUnbox
-hm2VecUnbox = convert . HM.flatten
+hm2VecUnbox :: ND.Matrix Double -> VecUnbox
+hm2VecUnbox = convert . ND.flatten

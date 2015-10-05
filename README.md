@@ -1,13 +1,18 @@
 Haskell-abinitio
 ================
 
-This package contains a Haskell tool to calculate the electronic structure properties 
-of molecules using the Hartree-Fock, Self Consistent Field method along with several
-modules featuring diferent integration schemes and eigenvalue solving routines.
+This package can calculate the Hartree Fock energy
+of a given molecule geometry and a basis set solving the
+Roothaan Hall equations through a self consistent field
+procedure. It uses the Harris Functional as an initial
+density guess and the DIIS method to greatly improve
+the convergence.
+The entire code is written using the [Repa](https://hackage.haskell.org/package/repa)
+library and focusing our efforts on efficiency, parallelism and code readability.
+Using Haskell’s higher order abstraction we are
+trying to develop an EDSL appropriate for quantum
+mechanics problems, creating code operators able to
+fairly mimic the physical ones.
 
-The cabal package contains the Main HartreeFock library along with a executable HsFock provided
-as the principal frontend.
-
-This tool is developed in the RESMOL research group http://www2.uah.es/resmol
-
-supported by Luis Manuel
+The original idea of the project can be found at
+[Haskell ab initio](https://themonadreader.files.wordpress.com/2013/03/issue214.pdf)

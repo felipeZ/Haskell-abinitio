@@ -19,7 +19,7 @@ import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
 --   S^-1/2
 symmOrtho :: Monad m => Array U DIM2 Double -> m (Array U DIM2 Double)
 symmOrtho arr = do
-  let (eigVal,eigVecs) = eigenSolve $ arr
+  let (eigVal,eigVecs) = eigenSolve arr
       (Z:.dim:._) = extent arr
       invSqrt = computeUnboxedS . R.map (recip . sqrt) $ fromUnboxed (Z:. dim) eigVal -- For building the S^-1/2 matrix
       diag = LA.vec2Diagonal invSqrt

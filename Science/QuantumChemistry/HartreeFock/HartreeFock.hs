@@ -71,17 +71,17 @@ import Science.QuantumChemistry.NumericalTools.TableBoys   (Boys,generateGridBoy
 -- =====================================> SCF PROCEDURE <================================================
 
 -- Initialize the required parameters to run the Hartree-Fock procedure
-scfHF ::  [AtomData] -> Charge -> (String -> IO ()) -> IO (HFData)
+scfHF ::  [AtomData] -> Charge -> (String -> IO ()) -> IO HFData
 scfHF atoms charge logger = do
         let repulsionN = nuclearRep atoms
             zeros      = flattenZero $  sum . fmap (length . getBasis) $ atoms
-            occupied   = floor . (/2) . (subtract charge) . sum 
-                                $ fmap (getZnumber) atoms
+            occupied   = floor . (/2) . subtract charge . sum 
+                                $ fmap getZnumber atoms
             dataDIIS   = DataDIIS S.empty S.empty 5
             gridBoys   = generateGridBoys 0.1 -- ^gridBoys dx, where mMax is the maximum order of the boys function and dx the grid delta
             integrals  = calcIntegrals gridBoys atoms
         core      <- hcore gridBoys atoms
-        s         <- mtxOverlap $ atoms
+        s         <- mtxOverlap atoms
         xmatrix   <- symmOrtho <=< triang2DIM2 $ s
         density   <- harrisFunctional core xmatrix integrals occupied
         scfDIIS atoms dataDIIS core density s xmatrix integrals repulsionN occupied 0 30 OFF logger
@@ -111,14 +111,13 @@ scfDIIS !atoms !dataDIIS !core !oldDensity !overlapMtx !xmatrix !integrals
        (moCoeff, newDensity, orbEnergies) <- diagonalHF fockDIIS xmatrix occupied
        let etotal =  (+repulsionN) $ variationalE core fockDIIS newDensity
            diisThreshold = 1.0e-7
-           bool =  if step /= 0 then convergeDIIS errorMtx diisThreshold else False
+           bool =  (step /= 0) && convergeDIIS errorMtx diisThreshold
            newHFData = HFData fockDIIS moCoeff newDensity orbEnergies etotal
        logger $ printf "New Density:\n%s\n\n" $ show newDensity
        logger $ printf "FockDIIS: \n%s\n\n" $ show fockDIIS
-       logger $ printf "total Energy: %.8f\n" $ etotal
+       logger $ printf "total Energy: %.8f\n"  etotal
        if bool then  return newHFData
-               else do
-                    scfDIIS atoms newDIIS core newDensity overlapMtx
+               else scfDIIS atoms newDIIS core newDensity overlapMtx
                             xmatrix integrals repulsionN occupied (step+1) maxStep newSwitch logger 
 
   | otherwise =  error "SCF maxium steps exceeded"
@@ -175,10 +174,10 @@ calcIntegrals gridBoys atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap 
           l <- [k..dim]
           let xs = [i,j,k,l]
           guard (condition xs)
-          return $ [i,j,k,l]
-        condition = \e -> case compare e $ sortKeys e of
-                               EQ        -> True
-                               otherwise -> False                               
+          return [i,j,k,l]
+        condition e = case compare e $ sortKeys e of
+                       EQ        -> True
+                       otherwise -> False                               
 
 -- | <ii||kl> == <ij||kk> = 0
 -- zeroCondition :: [Int] -> Bool
@@ -269,7 +268,7 @@ diagonalHF !fock1 !xmatrix !occupied = do
         let (orbEs,coeff) = eigenSolve fDIM2
         newCoeff       <- mmultP xmatrix coeff
         newDensity     <- calcDensity newCoeff occupied
-        return $ (newCoeff, newDensity, orbEs)
+        return (newCoeff, newDensity, orbEs)
 {-# INLINE diagonalHF #-}                
                    
                   
@@ -289,7 +288,7 @@ variationalE core fockMtx newDensity = (0.5*) $ sumAllS $ fromFunction (ix2 dim 
 
 -- | Function to check convergency
 converge :: FlattenChargeDensity -> FlattenChargeDensity -> Bool
-converge !oldDensity !newDensity  = if sigma < 1.0e-6 then True else False
+converge !oldDensity !newDensity  = sigma < 1.0e-6 
   where sigma = sqrt . (0.25*) . R.sumAllS . R.computeUnboxedS . R.map (^2) $ oldDensity -^ newDensity
 {-# INLINE converge #-}
   
@@ -300,7 +299,7 @@ converge !oldDensity !newDensity  = if sigma < 1.0e-6 then True else False
 nuclearRep :: [AtomData] -> Double
 nuclearRep xs = sum [repulsion atomi atomj | atomi <- xs, atomj <- xs, atomj > atomi]
   where dim = pred . length $ xs
-        repulsion at1 at2 = let ([za,zb],[ra,rb]) = fmap getZnumber &&& (fmap getCoord) $ [at1,at2]
+        repulsion at1 at2 = let ([za,zb],[ra,rb]) = fmap getZnumber &&& fmap getCoord $ [at1,at2]
                                 rab = sqrt . sum . fmap (^2) $ L.zipWith (-) ra rb
                             in za*zb/rab
 

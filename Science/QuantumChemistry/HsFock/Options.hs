@@ -14,7 +14,7 @@ import Text.Show.Functions
 data Options = Options
  { 
 --  optDump        :: Bool
-   optModules     :: [(String,(Options-> IO()))]
+   optModules     :: [(String, Options-> IO() ) ]
  , optMode        :: Maybe (Options->IO())
  , optVerbose     :: Bool
  , optShowVersion :: Bool

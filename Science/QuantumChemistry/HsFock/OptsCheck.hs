@@ -52,16 +52,14 @@ progOpts args defaultOptions acceptedOptions =
       (funs,filenames,[]) -> do
           resultOfFuns <- foldl (>>=) (return defaultOptions) funs               -- Perform monadic checkings upon getOpt supplied functions
           foldM check_input_file resultOfFuns $ reverse filenames                          -- Now check if all the input files exist and are accesible
-      (_,_,errs) -> do
-          left ( concat errs )
+      (_,_,errs) -> left ( concat errs )
 
 --check supplied input files exist or bang if any is not.
 check_input_file :: Options -> String -> OptsResult
 check_input_file optsR@Options { optInput = files , optDataDir = dataDir } filename = do
     test <- liftIO $ filename_check dataDir filename
-    case test of
-         True -> return $ (optsR { optInput = filename : files })
-         False -> left $ "input file "++ filename ++ " not readable"
+    if test then return (optsR { optInput = filename : files })
+            else left $ "input file "++ filename ++ " not readable"
     where
         filename_check :: Maybe FilePath -> FilePath -> IO Bool --check file with or without data directory
         filename_check (Just datadir) filename = doesFileExist $ combine datadir filename
