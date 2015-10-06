@@ -54,7 +54,7 @@ Generate a grid where each node is a thunk of the expensive function boysF. Now 
 -}
 generateGridBoys ::  Double -> Map Boys Double
 generateGridBoys delta = M.fromList $ zip keys val 
-  where keys = Boys <$> [fromIntegral x | x <- [0..mMax]] <*> [delta*fromIntegral(i) | i <- [0..xMax]]
+  where keys = Boys <$> [fromIntegral x | x <- [0..mMax]] <*> [delta*fromIntegral i | i <- [0..xMax]]
         val  = fmap (\(Boys m x) -> boysF m x) keys
         mMax = 14
         xMax = 1000

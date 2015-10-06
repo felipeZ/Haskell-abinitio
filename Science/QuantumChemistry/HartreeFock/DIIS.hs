@@ -80,7 +80,7 @@ diis !e !f dat@(DataDIIS es fs n) = do
        Nothing -> diis e f $ DataDIIS (initS es) (initS fs) n
        Just cs ->  do
            let 
-           r <- computeUnboxedP $ fromFunction (Z :. h1 :. dim1 ) $
+           r <- computeUnboxedP $ R.fromFunction (Z :. h1 :. dim1 ) $
                     \(Z:.i :. k) -> let arr = (f <| fs) `S.index` k
                                         ck  = cs  ! (Z :. k)
                                         val = arr ! (Z :. i)
@@ -91,7 +91,7 @@ diis !e !f dat@(DataDIIS es fs n) = do
 
 genMtxDIIS :: Monad m => Int -> Seq ErrorMatrix -> m (Array U DIM2 Double)
 genMtxDIIS !dim2 xs@(viewl -> e :< _) =
-   computeUnboxedP  $ fromFunction (Z:.dim2 :. dim2) $ \(Z:.m :. n ) -> fill m n
+   computeUnboxedP  $ R.fromFunction (Z:.dim2 :. dim2) $ \(Z:.m :. n ) -> fill m n
 
   where (Z:. dim1 :. _) = extent e
         finalIx = pred  dim2

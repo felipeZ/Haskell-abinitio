@@ -165,7 +165,7 @@ b1 <<| op  = (b1,op)
 mtxOverlap :: Monad m => [AtomData] -> m (Array U DIM1 Double) 
 mtxOverlap atoms = computeUnboxedP . fromFunction (Z:.dim) $
  (\idx -> let (Z:.i:.j) = LA.indexFlat2DIM2 norbital idx
-              [(r1,cgf1),(r2,cgf2)] = fmap calcIndex $ [i,j]
+              [(r1,cgf1),(r2,cgf2)] = calcIndex <$> [i,j]
           in sijContracted r1 r2 cgf1 cgf2)
              
   where norbital = sum . fmap (length . getBasis) $ atoms
@@ -194,12 +194,12 @@ sab g1@(Gauss r1 shellA (c1,e1)) g2@(Gauss r2 shellB (c2,e2)) =
   
   where [l1,l2] = fmap funtyp2Index [shellA,shellB]
         [pa,pb] = fmap (L.zipWith (-) p) [r1,r2]
-        p = meanp (e1,e2) r1 r2
-        expo = \x2 -> exp $ -mu * x2
-        s00 = fmap ((*cte) . expo . (^2)) $  L.zipWith (-) r1 r2
-        cte = sqrt $ pi/ gamma
-        gamma = e1+ e2
-        mu = e1*e2/gamma
+        p       = meanp (e1,e2) r1 r2
+        expo x2 = exp $ -mu * x2
+        s00     = ((*cte) . expo . (^2)) <$>  L.zipWith (-) r1 r2
+        cte     = sqrt $ pi/ gamma
+        gamma   = e1+ e2
+        mu      = e1*e2/gamma
 
 -- | ObaraSaika Scheme to calculate overlap integrals
 obaraSaika ::Double -> Double -> Double -> Double -> Int -> Int  -> Double
@@ -209,14 +209,10 @@ obaraSaika gamma s00 pax pbx i j = s i j
         c = recip $ 2.0 * gamma
         s !m !n | m < 0 || n < 0   =  0.0
                 | all (== 0) [m,n] =  s00
-                | m == 0 =   pbx * (s 0 (pred n)) + c* (n_1 * (s 0 $ pred2 n))
-                | n == 0 =   pax * (s (pred m) 0) + c*(m_1 * (s (pred2 i) 0))
-                | otherwise  =   pax * (s (pred m) n) + c * (m_1 * (s (pred2 m) n) +
-                               (fromIntegral n) * (s (pred m) $ pred n))
-
+                | m == 0 =   pbx * s 0 (pred n) + c* n_1 * s 0 (pred2 n) 
+                | n == 0 =   pax * s (pred m) 0 + c* m_1 * s (pred2 i) 0
+                | otherwise  = pax * (s (pred m) n) + c * m_1 * s (pred2 m) n +  fromIntegral n * s (pred m) (pred n)
           where [m_1,n_1] = fmap (fromIntegral . pred) [m,n]
-         
-
          
 -- ====================> HAMILTONIAN CORE <=======================
 
@@ -224,10 +220,10 @@ obaraSaika gamma s00 pax pbx i j = s i j
 hcore :: Monad m => ML.Map Boys Double -> [AtomData] -> m (Array U DIM1 Double)
 hcore gridBoys atoms  = computeUnboxedP . fromFunction (Z:. dim) $
  (\idx -> let (Z:.i:.j) = LA.indexFlat2DIM2 norbital idx
-              [atomi,atomj] = fmap calcIndex $ [i,j]
+              [atomi,atomj] =  calcIndex <$> [i,j]
               derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
               -- sumVij = sum $!! L.zipWith (\z rc -> ((-z) * atomi <<|Vij rc derv |>> atomj)) atomicZ coords
-              sumVij = sum $!! L.zipWith (\z rc -> ((-z) * (vijContracted gridBoys atomi rc atomj derv) ) ) atomicZ coords              
+              sumVij = sum $!! L.zipWith (\z rc -> ((-z) * vijContracted gridBoys atomi rc atomj derv ) ) atomicZ coords              
              in (atomi <<|Tij|>> atomj) + sumVij)
 
   where coords    = fmap getCoord atoms
@@ -235,7 +231,7 @@ hcore gridBoys atoms  = computeUnboxedP . fromFunction (Z:. dim) $
         norbital  = sum . fmap (length . getBasis) $ atoms
         dim       = (norbital^2 + norbital) `div`2
         calcIndex = LA.calcCoordCGF atoms
-{- INLINE hcore -}
+{-# INLINE hcore #-}
              
 -- ==================> Kinetic Energy IntegralsEvaluation  <========================
 -- |the kinetic integral for two S-functions is
@@ -263,22 +259,22 @@ tab gA@(Gauss r1 shell1 (c1,e1)) gB@(Gauss !r2 !shell2 (!c2,!e2)) =
    c1*c2 * (sum . fmap product $! permute [\x -> tx x (j x) (k x),\x -> sx x (j x) (k x),\x -> sx x (j x) (k x)] [0..2])
 
   where [j,k] = fmap funtyp2Index [shell1,shell2]
-        sx i lang1 lang2 = obaraSaika gamma (s00 !! i) (pa !! i) (pb !! i) lang1 lang2
+        sx i  = obaraSaika gamma (s00 !! i) (pa !! i) (pb !! i) 
         tx i lang1 lang2 = let [l1,l2] = fmap fromIntegral [lang1,lang2]
-                           in -2.0 * e2^2 * (sx i lang1 (lang2+2)) +
-                              e2*(2*l2 +1)* (sx i lang1 lang2) -
-                              0.5*l2*(l2-1)*(sx i lang1 (lang2 -2))
-        cte = sqrt (pi/ gamma)
-        s00 = fmap ((*cte) . expo . (^2)) $  L.zipWith (-) r1 r2
-        t00 = \x -> e1 - 2*e1^2 *((pa !! x)^2 + (recip $ 2*gamma)) * (s00 !! x )
-        expo = \x2 -> exp $ -mu * x2
+                           in -2.0 * e2^2 *  sx i lang1 (lang2+2) +
+                              e2*(2*l2 +1)*  sx i lang1 lang2 -
+                              0.5*l2*(l2-1)* sx i lang1 (lang2 -2)
+        cte     = sqrt (pi/ gamma)
+        s00     = ((*cte) . expo . (^2)) <$>  L.zipWith (-) r1 r2
+        t00 x   = e1 - 2*e1^2 *((pa !! x)^2 + recip (2*gamma)) * (s00 !! x )
+        expo x2 = exp $ -mu * x2
         [pa,pb] = fmap (L.zipWith (-) p)  [r1,r2]
         p = meanp (e1,e2) r1 r2
         gamma = e1+ e2
         mu = e1*e2/gamma        
         
 permute :: [a -> b] -> [a] -> [[b]]
-permute [f,g,h] xs = L.zipWith (L.zipWith ($)) [[f,g,h],[g,f,h],[g,h,f]] $ repeat xs
+permute [f,g,h] xs = fmap (\ x -> L.zipWith ($) x xs) [[f, g, h], [g, f, h], [g, h, f]]
 
 -- =====================> TWO ELECTRON INTEGRALS <=========================================
 
@@ -286,7 +282,7 @@ permute [f,g,h] xs = L.zipWith (L.zipWith ($)) [[f,g,h],[g,f,h],[g,h,f]] $ repea
 --  indexes of the atomic basis <ab|cd>
 evalIntbykey :: ML.Map Boys Double -> [AtomData] -> [Int] ->  Double
 evalIntbykey gridBoys atoms keys = contracted4Centers gridBoys centers 
- where centers = (LA.calcCoordCGF atoms) <$> keys
+ where centers = LA.calcCoordCGF atoms <$> keys
 
 -- | Calculate electronic interaction among the four center contracted Gaussian functions
 contracted4Centers :: ML.Map Boys Double -> [(NucCoord,CGF)] -> Double
@@ -304,7 +300,7 @@ contracted4Centers gridBoys [(ra,cgf1), (rb,cgf2), (rc,cgf3), (rd,cgf4)] = sum c
           return $ twoElectronHermite gridBoys gauss
 
 schwarz :: [Gauss] -> Bool 
-schwarz gs@[g1,g2,g3,g4] =  if val < 1e-8 then False else True 
+schwarz gs@[g1,g2,g3,g4] =  not (val < 1e-8) 
  
  where val = qab * qcd  
        qab = sqrt $ twoTermsERI g1 g2
@@ -320,17 +316,17 @@ twoTermsERI ga gb =  (*cte) . U.sum $ coeff `deepseq` U.map (*suma) coeff
   where suma              = U.sum $ U.zipWith (*) sgns coeff
         gs                = [ga,gb]
         coeff             = calcHermCoeff [rpa,rpb] p seedC          
-        tuvs              = fmap getijt $ genCoeff_Integral [symb1,symb2] derv
+        tuvs              = getijt <$> genCoeff_Integral [symb1,symb2] derv
         seedC             = initilizedSeedCoeff [symb1,symb2] rab mu        
-        sgns              = U.fromList . fmap (\xs-> (-1.0)^(sum xs)) $ tuvs
+        sgns              = U.fromList . fmap (\xs-> (-1.0)^sum xs) $ tuvs
         [ra,rb]           = fmap nucCoord gs
         [symb1,symb2]     = fmap funtype  gs
-        ([c1,c2],[e1,e2]) = (fmap fst ) &&& (map snd ) $ fmap gaussP gs
+        ([c1,c2],[e1,e2]) = fmap fst &&& fmap snd $ fmap gaussP gs
         p                 = e1 + e2
         rp                = meanp (e1,e2) ra rb
         [rab,rpa,rpb]     = fmap restVect  (zip [ra,rp,rp] [rb,ra,rb])
-        mu                = e1*e2* (recip $ e1 + e2)
-        cte               = 2 * (c1^2 * c2^2 ) * (sqrt $ (pi/(2*p))^5)
+        mu                = e1*e2* recip (e1 + e2)
+        cte               = 2 * (c1^2 * c2^2 ) * sqrt ((pi/(2*p))^5)
         -- cte               = 2*(sqrt $ (pi/(2*p))^5)
         derv              = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
 
@@ -348,14 +344,14 @@ twoElectronHermite gridBoys gs = (cte *) . U.sum . U.zipWith (*) coeff1 $!! U.fr
         ps      = fmap gaussP gs
         rp      = meanp (e1,e2) ra rb
         rq      = meanp (e3,e4) rc rd
-        [mu,nu] = (\(a,b) -> a*b* (recip $ a + b)) `fmap` [(e1,e2),(e3,e4)]
-        [p,q]   = uncurry (+) `fmap` [(e1,e2),(e3,e4)]
+        [mu,nu] = (\(a,b) -> a*b* recip (a + b)) <$> [(e1,e2),(e3,e4)]
+        [p,q]   = uncurry (+) <$> [(e1,e2),(e3,e4)]
         alpha   = p*q/(p+q)
-        cte     = (c1*c2*c3*c4*) . (*(2.0*pi**2.5)) . recip $ (p * q ) * (sqrt $ p + q)
+        cte     = (c1*c2*c3*c4*) . (*(2.0*pi**2.5)) . recip $ (p * q ) * sqrt (p + q)
         [ra,rb,rc,rd]                 = fmap nucCoord gs
         [symb1,symb2,symb3,symb4]     = fmap funtype  gs
         [rab,rcd,rpa,rpb,rqc,rqd,rpq] = fmap restVect  (zip [ra,rc,rp,rp,rq,rq,rp][rb,rd,ra,rb,rc,rd,rq])
-        ([c1,c2,c3,c4],[e1,e2,e3,e4]) = (fmap fst ) &&& (fmap snd ) $ ps
+        ([c1,c2,c3,c4],[e1,e2,e3,e4]) = fmap fst  &&& fmap snd $ ps
         derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
 
 
@@ -363,7 +359,7 @@ mcMurchie2 :: ML.Map Boys Double -> VecUnbox -> NucCoord -> Double -> [HermiteIn
 mcMurchie2 gridBoys coeff2 rpq alpha abcs' tuv' = U.sum $ integrals `deepseq` U.zipWith3 (\x y z -> x*y*z) sgns coeff2  integrals
   where tuv       = getijt tuv'
         abcs      = fmap getijt  abcs'
-        sgns      = U.fromList $ fmap (\xs-> (-1.0)^(sum xs)) abcs
+        sgns      = U.fromList $ fmap (\xs-> (-1.0)^sum xs) abcs
         integrals = U.unfoldr (calcHermIntegral gridBoys rpq alpha) seedI
         seedI     = HermiteStateIntegral mapI0 listI
         mapI0     = M.insert k0' f0 M.empty
@@ -371,8 +367,7 @@ mcMurchie2 gridBoys coeff2 rpq alpha abcs' tuv' = U.sum $ integrals `deepseq` U.
         rp2       = sum $ fmap (^2) rpq
         y         = alpha*rp2
         f0        = boysF 0 y
-        listI     = Rpa 0 `fmap` (fmap (L.zipWith (+) tuv) abcs )
-
+        listI     = fmap (Rpa 0 . L.zipWith (+) tuv) abcs
 
 
 -- ======================> McMURCHIE -DAVIDSON SCHEME <=========================
@@ -392,7 +387,7 @@ vijContracted gridBoys (ra,cgf1) rc (rb,cgf2) derv = sum $
            
 -- | Hermite auxiliar function calculations according to the McMURCHIE -DAVIDSON scheme        
 vijHermite :: ML.Map Boys Double -> Gauss -> Gauss -> NucCoord -> CartesianDerivatives -> Double
-vijHermite gridBoys g1 g2 rc derv = ((-1)^sumDervExpo) * cte * (mcMurchie gridBoys shells [ra,rb,rc] (e1,e2) derv)
+vijHermite gridBoys g1 g2 rc derv = ((-1)^sumDervExpo) * cte * mcMurchie gridBoys shells [ra,rb,rc] (e1,e2) derv
   where cte = c1 * c2 * 2.0 * (pi/gamma) 
         gamma = e1+e2     
         [ra,rb] =  fmap nucCoord [g1,g2]
@@ -428,7 +423,7 @@ calcHermIntegral gridBoys rpa alpha stIntegral = do
 -- |Recursive Hermite Integrals        
 calcHermM :: ML.Map Boys Double -> NucCoord  -> Double -> HermiteIndex ->  Memo HermiteIndex Double Double
 calcHermM gridBoys rpq@[x,y,z] alpha (Rpa n [t,u,v]) 
-     | any (<0) [t,u,v] = return $ 0
+     | any (<0) [t,u,v] = return 0
    
      | t >= 1 = do  boy1 <- memo funHermM $ Rpa (n+1) [t-2,u,v]
                     boy2 <- memo funHermM $ Rpa (n+1) [t-1,u,v] 
@@ -442,7 +437,7 @@ calcHermM gridBoys rpq@[x,y,z] alpha (Rpa n [t,u,v])
                     boy2 <- memo funHermM $ Rpa (n+1) [t,u,v-1] 
                     return $ (fromIntegral v -1)*boy1 + z*boy2
 
-     | otherwise = do let arg = (alpha*) . sum . (map (^2))  $ rpq 
+     | otherwise = do let arg = (alpha*) . sum . fmap (^2)  $ rpq 
                       return $ (-2.0*alpha)^n * boysTaylor gridBoys (fromIntegral n) arg 
 
      where funHermM = calcHermM gridBoys rpq alpha
@@ -497,7 +492,7 @@ genCoeff_Hermite shells = do
   i <-[0..l1+l2]
   j <-[0..m1+m2]
   k <-[0..n1+n2]
-  return $ [Xpa [l1,l2,i], Ypa [m1,m2,j], Zpa [n1,n2,k]] 
+  return [Xpa [l1,l2,i], Ypa [m1,m2,j], Zpa [n1,n2,k]] 
   where [l1,m1,n1,l2,m2,n2] = listIndexes shells
 
 
@@ -527,11 +522,11 @@ genCoeff_Integral symbols (Dij_Ax e, Dij_Ay f, Dij_Az g) =
 -- i = 2k - 1 => k = (i + 1)/ 2
 -- | Odd factorial function
 facOdd ::Int -> Double
-facOdd  i | i `rem`2 == 0  = error "Factorial Odd function required an odd integer as input"
+facOdd  i | even i  = error "Factorial Odd function required an odd integer as input"
           | otherwise  = case compare i 2 of
                              LT -> 1
                              GT-> let k = (1 + i) `div ` 2
-                                  in (fromIntegral $ fac (2*k)) /  (2.0^k * (fromIntegral $ fac k))
+                                  in fromIntegral (fac (2*k)) /  (2.0^k * fromIntegral (fac k))
 
 -- | Factorial function
 fac :: Int -> Int
@@ -547,7 +542,7 @@ rab2 a b = sum . fmap (^2). L.zipWith (-) a $ b
 
 -- | Mean point between two gaussians
 meanp ::(Exponent,Exponent) -> NucCoord -> NucCoord -> [Double]
-meanp (e1,e2) ra rb = fmap (\(a,b) -> (e1*a + e2*b)/(e1+e2)) $ L.zip ra rb
+meanp (e1,e2) ra rb = (\(a,b) -> (e1*a + e2*b)/(e1+e2)) <$> L.zip ra rb
 
 restVect :: (NucCoord,NucCoord) -> NucCoord
 restVect (ra,rb) = L.zipWith (-) ra rb

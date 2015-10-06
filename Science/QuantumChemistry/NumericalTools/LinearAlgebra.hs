@@ -81,8 +81,7 @@ dotMatrix mtx1 mtx2 = sumAllS. computeUnboxedS $ fromFunction (Z:.dim^2) $
 
 -- |Parallel multiplication of two flatten matrices
 mmultFlattenP :: Monad m => Array U DIM1 Double -> Array U DIM1 Double -> m (Array U DIM2 Double)
-mmultFlattenP !arr !brr =
-   do   computeUnboxedP
+mmultFlattenP !arr !brr = computeUnboxedP
          $ fromFunction (Z :. dim :. dim)
          $ \(Z:. i:. j) ->  R.sumAllS
                             $ (rowFlattenArray arr i) *^ (rowFlattenArray brr j)
@@ -93,8 +92,7 @@ mmultFlattenP !arr !brr =
 
 -- |Sequential multiplication of two flatten matrices
 mmultFlattenS :: Array U DIM1 Double -> Array U DIM1 Double -> Array U DIM2 Double
-mmultFlattenS !arr !brr =
-   do   computeUnboxedS
+mmultFlattenS !arr !brr = computeUnboxedS
          $ fromFunction (Z :. dim :. dim)
          $ \(Z:. i:.j ) ->   R.sumAllS
                              $ (rowFlattenArray arr i) *^ (rowFlattenArray brr j)
@@ -105,8 +103,7 @@ mmultFlattenS !arr !brr =
 
 -- | Parallel Square-upper traingular matrices multiplication
 mmultDIM2FlattenP :: Monad m => Array U DIM2 Double -> Array U DIM1 Double -> m (Array U DIM2 Double)
-mmultDIM2FlattenP !arr !flat =
-   do   computeUnboxedP
+mmultDIM2FlattenP !arr !flat =  computeUnboxedP
          $ fromFunction (Z :. dim :. dim)
          $ \ix@(Z:. i:.j) -> let xs = unsafeSlice arr (Any :. (row ix) :. All)
                                  ys = rowFlattenArray flat j

@@ -107,7 +107,7 @@ kummer a b z err = gammaFactor * integralPart
     where
         gammaFactor       = (gamma b) / (gamma a * gamma (b-a))
         integralPart      = integrator err fun 0 1
-        fun               = (\t -> (e ** (z * t)) * (1-t) ** (b-a-1) * t ** (a-1))
+        fun t             = (e ** (z * t)) * (1-t) ** (b-a-1) * t ** (a-1)
         e                 = exp 1
         integrator err
                 | err > 0.1   = nIntegrate128

@@ -175,8 +175,8 @@ instance NFData a => NFData (Choice a) where
   rnf Ignore   = ()
   rnf (Take x) = rnf x
 
-instance NFData a => NFData (Sum a) where
-  rnf (Sum a) = rnf a 
+-- instance NFData a => NFData (Sum a) where
+--   rnf (Sum a) = rnf a 
   
 -- ===================> <=====================  
 choices :: b -> (a -> b) -> Choice a -> b

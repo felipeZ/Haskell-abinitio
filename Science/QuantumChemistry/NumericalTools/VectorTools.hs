@@ -64,7 +64,7 @@ writeColumn ::  (Unbox a, PrimMonad m) =>
                      MVector (PrimState m) a ->
                      Vector a -> 
                      m ()                    
-writeColumn k dim mvec unvec = zipWithM_ (unsafeWrite mvec) indexes unvec 
+writeColumn k dim mvec = zipWithM_ (unsafeWrite mvec) indexes
   where indexes = generate dim $ \i -> k + dim*i
 
 

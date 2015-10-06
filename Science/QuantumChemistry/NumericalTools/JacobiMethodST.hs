@@ -36,7 +36,7 @@ jacobiST !arr = second (fromUnboxed (ix2 dim dim)) $ sortEigenData $
                 runST $ do 
                 vss <- unsafeThaw $ toUnboxed arr
                 ide <- unsafeThaw $ toUnboxed $ identity dim
-                loopJacobi vss ide dim 0 (1.0e-9)  
+                loopJacobi vss ide dim 0 1.0e-9
   where (Z:.dim:. _) = extent arr
                   
 
@@ -81,9 +81,9 @@ rotateA arr kl@(Z:. k :. l) (Parameters s t tau) dim funIdx =
      uwrite (ix2 k l) 0
      uread (ix2 k k) >>= \akk -> uwrite (ix2 k k) $ akk - t*maxElem
      uread (ix2 l l) >>= \all -> uwrite (ix2 l l) $ all + t*maxElem
-     loopArr (\i -> ix2 i k) (\i -> ix2 i l) 0 k
-     loopArr (\i -> ix2 k i) (\i -> ix2 i l) (k+1) (l-k-1)
-     loopArr (\i -> ix2 k i) (\i -> ix2 l i) (l+1) (dim-l-1)
+     loopArr (`ix2` k) (`ix2` l) 0 k
+     loopArr ( ix2  k) (`ix2` l) (k+1) (l-k-1)
+     loopArr ( ix2  k) ( ix2  l) (l+1) (dim-l-1)
      return arr 
 
   where uwrite idx = unsafeWrite arr (funIdx idx)
@@ -135,6 +135,5 @@ maxElemIndex !arr dim  = liftM (fromIndex sh) $ U.foldM' fun 1 inds
         fun acc n = do let (Z:. i:.j) = fromIndex sh n
                        x <- unsafeRead arr n
                        y <- unsafeRead arr acc
-                       return $  if i < j then if (abs x > abs y) then n else acc
-                                          else acc                
+                       return (if (i < j) && (abs x > abs y) then n else acc)
 

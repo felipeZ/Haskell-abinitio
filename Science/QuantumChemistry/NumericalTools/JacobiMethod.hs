@@ -31,7 +31,7 @@ data Parameters = Parameters !Double !Double !Double deriving Show
 jacobiP :: Monad m => Matrix -> m (VecUnbox,Matrix)
 jacobiP !arr = liftM (second (R.fromUnboxed sh) . sortEigenData .
                              second toUnboxed) $
-                 loopJacobi arr ide 0 (1.0e-9)  
+                 loopJacobi arr ide 0 1.0e-9
   where sh = extent arr
         ide = identity sh
 
@@ -99,8 +99,7 @@ maxElemIndex !arr  = R.fromIndex sh $ U.foldr fun 1 inds
         sh@(Z:. dim :. _dim) = extent arr
         fun n acc= let sh2@(Z:. i:.j) = R.fromIndex sh n
                        sh3 = R.fromIndex sh acc
-                   in if i < j then if (abs (arr ! sh2) > abs (arr ! sh3)) then n else acc
-                               else acc                
+                   in if (i < j) && (abs (arr ! sh2) > abs (arr ! sh3)) then n else acc
 
                 
 identity :: DIM2 -> Matrix

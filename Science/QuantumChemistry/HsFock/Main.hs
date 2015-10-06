@@ -72,7 +72,7 @@ acceptedOptions =
  , Option ['m']     ["mode"]    (ReqArg  check_operation_mode  "Mode")         "Mode of Operation"
  , Option []        ["dump"]    (NoArg   check_dump_options   )                "Force args cmdline dump"
 --  , Option ['e']     ["error"]   (NoArg (\ _opts -> return $ Left "forced error on args detected!"))  "Force args checking error"
- , Option ['v']     ["verbose"] (NoArg  ( check_verbosity      ))                "Verbose run on stderr"
+ , Option ['v']     ["verbose"] (NoArg   check_verbosity      )                "Verbose run on stderr"
 --  , Option ['i']     ["input"]   (OptArg (\f opts -> check_input_file f opts) "FILE")             "Input file"
  ]
 
@@ -210,8 +210,8 @@ doSomeStuff optsR@Options { optMode = mode } =
 printFiles :: Options -> IO ()
 printFiles opts@Options { optInput = files, optDataDir = datadir } =  mapM_ printargs filepaths 
     where
-            dir = fromMaybe "./" datadir
-            filepaths = zipWith combine (repeat dir) files
+            dir       = fromMaybe "./" datadir
+            filepaths = fmap  (combine dir) files
             printargs :: String -> IO ()
             printargs path = putStrLn $ "Processing path: " ++ path ++ "..."
 

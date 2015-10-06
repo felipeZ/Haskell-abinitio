@@ -33,12 +33,12 @@ normGlobal cgf@(CGF ps l) =  CGF newPrimitives l
     N = sqrt $ ((2l -1)!! (2m-1)!! (2n-1)!!)/(4*expo)^(l+m+n)  * (pi/(2*e))**1.5
     where expo is the exponential factor of the contracted -}
 normCoeff :: CGF -> [Double]
-normCoeff b1 = zipWith fun cs es 
+normCoeff b1    = zipWith fun cs es 
   where (cs,es) = unzip . getPrimitives $ b1
-        fun = \c e -> (c/) . sqrt $ (ang e) * (pi/(2*e))**1.5
-        ang x = prod / (4*x)^(sum indexes)
-        prod = product $ fmap (\k -> facOdd (2*k -1)) indexes
-        shell = getfunTyp  b1
+        fun c e = (c/) . sqrt $ (ang e) * (pi/(2*e))**1.5
+        ang x   = prod / (4*x)^(sum indexes)
+        prod    = product $ fmap (\k -> facOdd (2*k -1)) indexes
+        shell   = getfunTyp  b1
         indexes = fmap (LA.map2val mapLAngular) $ zip (repeat shell) [0..2]
 
 -- normCoeff :: CGF -> CGF
