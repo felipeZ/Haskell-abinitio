@@ -1,6 +1,10 @@
 Haskell-abinitio
 ================
 
+ See http://felipez.github.io/Haskell-abinitio for documentation.
+
+Description
+-----------
 This package can calculate the Hartree Fock energy
 of a given molecule geometry and a basis set solving the
 Roothaan Hall equations through a self consistent field
