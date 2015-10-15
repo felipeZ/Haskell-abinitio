@@ -14,7 +14,7 @@ import System.Console.CmdArgs
 import System.Directory ( doesDirectoryExist, doesFileExist )
 import System.Environment (getArgs, withArgs)
 import System.FilePath
-import System.IO
+import System.Exit (exitFailure)
 import Text.Printf
 
 
@@ -31,26 +31,21 @@ import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.HartreeFock.HartreeFock    -- This is the main HartreeFock library, providing functions and types needed
 -- import Science.QuantumChemistry.HsFock.OptsCheck            
 
+import Science.QuantumChemistry.HsFock.Initialize
 import Science.QuantumChemistry.HsFock.Project             -- We define a generic project skeleton for sample data
 import Science.QuantumChemistry.HsFock.SampleProjects      -- We include several sample projects for ease of testing
 
 
 -- ============================================================
-data HSFOCK =  HSFOCK {
-                    scf       :: Bool
-                   ,basis     :: String
-                   ,xyz       :: FilePath
-                   ,outFile   :: FilePath
-                   -- ,inputFile :: FilePath
-
-                   } deriving (Show, Data, Typeable)
 
 hsFock = HSFOCK
                   {scf   = def &= help "Solves The HF equation using the Self Consistent Field (SCF) Method" 
                   ,basis = def &= help "Uses basis set, for instance: 6-31G*" &= typ
 "BASIS"
                   ,xyz   = def &= help "Use the Cartesian coordinates of the file" &= typFile
-                  ,outFile = def &= help "Output file" &= typFile                            
+                  ,charge= 0   &= help "Molecular charge" &= typ "TotalCharge"
+                  ,multi = 1   &= help "Spin state" &= typ "SpinState"
+                  ,outFile = "scf.out" &= help "Output file" &= typFile
                   }
                   &= summary (progName ++ progAuthors) 
                   &= help "The Hartree-Fock method implemented in Haskell"
@@ -73,12 +68,16 @@ processors c =
 -- | Sanity check of arguments
 checkOpts :: HSFOCK -> IO ()
 checkOpts HSFOCK{..}= do
-  when (not scf)    $ putStrLn "We only Serve HartreeFock SCF (for the moment)"
-  when (null basis) $ putStrLn "You must provide a basis set name"
+  when (not scf)    $ printExit "We only Serve HartreeFock SCF (for the moment)"
+  when (null basis) $ printExit "You must provide a basis set name"
+  when (charge < 0) $ printExit "Charge must be a natural number"
+  when (multi <= 0) $ printExit "Multiplicity must be 1 (singlet), 2(doblet), etc."
   --todo check that basis set exist
   [xyzBool,outBool]   <- mapM doesFileExist [xyz,outFile]
-  when (xyzBool)  $ printf "Coordinates File %s does not exist" xyz 
-  when (outBool)  $ printf "file %s is going to be overwritten\n" outFile 
+  when (xyzBool) . printExit $ printf "Coordinates File %s does not exist" xyz 
+  when (outBool) . printExit $ printf "file %s is going to be overwritten\n" outFile 
+
+   where printExit s = putStrLn s *> exitFailure 
 
 -- ========================> <========================================
 
@@ -91,6 +90,40 @@ main  = do
   cores  <- getNumCapabilities
   processors cores
   print opts
+
+doSCF :: HSFOCK -> IO ()
+doSCF hs@HSFOCK{..} = do
+  putStrLn "Starting main SCF calculations, please wait...."
+  logger      <- initLogger outFile
+  atoms       <- initializeAtoms hs
+  hartreeData <- scfHF atoms charge (logMessage logger)
+  logMessage logger "Hartree-Fock has succeeded !!!\n"
+  logStop logger
+
+
+
+
+-- doSCF :: IO ()
+-- doSCF = do
+--     logger <- initLogger "water_6-31G*.out"  
+--     let projectdata = project "water" "6-31G*"
+--         charge = 0
+--         atom1 = AtomData r1 baseO 8.0
+--         atom2 = AtomData r2 baseH 1.0
+--         atom3 = AtomData r3 baseH 1.0
+--         [r1, r2, r3] = atomList projectdata
+--         [baseH,baseO] = pBasis projectdata
+--     putStrLn "Starting main SCF calculations, please wait...."
+--     logMessage logger "number of shells: "
+--     logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2,atom3]
+--     hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
+--     putStrLn "DONE"
+--     logMessage logger "Hartree-Fock has succeeded !!!\n"
+--     logMessage logger "HF\n"
+--     logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
+--     logMessage logger "The answer is 42!!"
+--     logStop logger
+
 
 
 
@@ -151,27 +184,6 @@ main  = do
 --     logMessage logger "The answer is 42!!"
 --     logStop logger
 
-
-doSCF :: IO ()
-doSCF = do
-    logger <- initLogger "water_6-31G*.out"  
-    let projectdata = project "water" "6-31G*"
-        charge = 0
-        atom1 = AtomData r1 baseO 8.0
-        atom2 = AtomData r2 baseH 1.0
-        atom3 = AtomData r3 baseH 1.0
-        [r1, r2, r3] = atomList projectdata
-        [baseH,baseO] = pBasis projectdata
-    putStrLn "Starting main SCF calculations, please wait...."
-    logMessage logger "number of shells: "
-    logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2,atom3]
-    hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
-    putStrLn "DONE"
-    logMessage logger "Hartree-Fock has succeeded !!!\n"
-    logMessage logger "HF\n"
-    logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
-    logMessage logger "The answer is 42!!"
-    logStop logger
 
 
 -- doSCF :: Options -> IO ()

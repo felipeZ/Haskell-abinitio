@@ -31,7 +31,9 @@ Library
 
   build-depends:
       async
+    , attoparsec
     , base   == 4.8.*        
+    , bytestring
     , Cabal  
     , cmdargs
     , containers
@@ -84,7 +86,9 @@ executable hsFock
 
   build-depends:
       async
+    , attoparsec
     , base == 4.8.*
+    , bytestring
     , Cabal  
     , cmdargs
     , containers
@@ -113,7 +117,7 @@ executable hsFock
          Science.QuantumChemistry.HartreeFock.Derivatives
          Science.QuantumChemistry.HartreeFock.DIIS
          Science.QuantumChemistry.HartreeFock.HartreeFock
-         Science.QuantumChemistry.HsFock.Input
+         Science.QuantumChemistry.HsFock.Initialize
          Science.QuantumChemistry.HsFock.OptsCheck
          Science.QuantumChemistry.HsFock.Project
          Science.QuantumChemistry.HsFock.SampleProjects
@@ -126,8 +130,7 @@ executable hsFock
          Science.QuantumChemistry.NumericalTools.LinearAlgebra 
          Science.QuantumChemistry.NumericalTools.VectorTools
          Science.QuantumChemistry.ParsecTools.BasisParser 
-         Science.QuantumChemistry.ParsecTools.ParsecNumbers
-         Science.QuantumChemistry.ParsecTools.ParsecText
+         Science.QuantumChemistry.ParsecTools.ParseUtils
          
 
   default-language:    Haskell2010

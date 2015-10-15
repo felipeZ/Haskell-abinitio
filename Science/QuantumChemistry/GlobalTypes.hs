@@ -1,19 +1,22 @@
-{-# Language DeriveFunctor #-}
+{-# Language DeriveFunctor, DeriveDataTypeable #-}
 
 -- The HaskellFock SCF Project
--- @2013 Felipe Zapata, Angel Alvarez
+-- @2012-2015 Felipe Zapata, Angel Alvarez
 -- shared types
 
 module Science.QuantumChemistry.GlobalTypes where
 
 import Control.Applicative
+import Control.Exception 
 import Control.DeepSeq
 import Data.Array.Repa          as R
+import Data.Data
 import qualified Data.Foldable as DF
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..),Sum(..),mappend,mconcat,mempty)
 import qualified Data.Traversable as DT
+import Data.Typeable
 import qualified Data.Vector.Unboxed as VU
 
 --  =========================> TYPES <=====================
@@ -129,13 +132,31 @@ data Choice a = Ignore | Take a  deriving (Show,Functor)
 
 data Switch = ON | OFF
 
+
+-- | Error Reporting
+data HSFOCKException =  SCFerror | IOerror | XYZParseError   deriving (Show,Typeable)
+
+-- | Command Line parsing Data types
+data HSFOCK =  HSFOCK {
+                    scf       :: Bool
+                   ,basis     :: String
+                   ,charge    :: Double
+                   ,multi     :: Int                     
+                   ,xyz       :: FilePath
+                   ,outFile   :: FilePath
+                   -- ,inputFile :: FilePath
+
+                   } deriving (Show, Data, Typeable)
+
+
 -- ================> NEWTYPES <========================
 
 newtype Recursive a = Recursive {runRecursive :: a -> a} 
 
 
  -- =================> INSTANCES <===================
- 
+instance Exception HSFOCKException
+                      
 instance Bounded Funtype where
   minBound = S
   maxBound = Fzzz
