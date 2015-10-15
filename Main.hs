@@ -95,7 +95,7 @@ doSCF :: HSFOCK -> IO ()
 doSCF hs@HSFOCK{..} = do
   putStrLn "Starting main SCF calculations, please wait...."
   logger      <- initLogger outFile
-  atoms       <- initializeAtoms hs
+  atoms       <- initializeAtoms hs (logMessage logger)
   hartreeData <- scfHF atoms charge (logMessage logger)
   logMessage logger "Hartree-Fock has succeeded !!!\n"
   logStop logger

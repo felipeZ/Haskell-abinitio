@@ -4,22 +4,24 @@
 module Science.QuantumChemistry.ParsecTools.ParseXYZ where
 
 -- ====================> Standard Modules and third party <==============================
-import Control.Applicative 
 import Data.Attoparsec.ByteString.Char8
 import Data.ByteString.Char8 (unpack)
+import Text.Printf
 
 -- ====================> Internal Modules <=======================
+import Science.QuantumChemistry.Error (HSFOCKException(..))
 import Science.QuantumChemistry.GlobalTypes (AtomData)
-import  Science.QuantumChemistry.ParsecTools.ParseUtils 
+import Science.QuantumChemistry.ParsecTools.ParseUtils 
+
 
 -- ==========================> Types <=================================
 type Atom = (String,[Double])
 
 -- =========================> <================================       
 
--- | 
-parseFileXYZ :: FilePath -> IO [Atom]
-parseFileXYZ file = parseFromFile parserXYZ file 
+-- | Reads Molecular Geometry in xyz format
+parseFileXYZ :: FilePath -> (String -> IO () ) -> IO [Atom]
+parseFileXYZ file logger = parseFromFile parserXYZ file
 
 -- | 
 parserXYZ :: Parser [Atom]

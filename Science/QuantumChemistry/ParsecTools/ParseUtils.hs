@@ -11,7 +11,7 @@ import qualified Data.ByteString as B
 
 
 -- ====================> Internal Modules <=======================
-import Science.QuantumChemistry.GlobalTypes 
+import Science.QuantumChemistry.Error (HSFOCKException(..))
 
 -- ======================================================================
 -- | 
@@ -19,7 +19,7 @@ parseFromFile :: Parser a -> FilePath -> IO a
 parseFromFile p file = do
  xs <- B.readFile file
  case parseOnly p xs of
-      Left  msg  -> throwIO XYZParseError 
+      Left  msg  -> throwIO ParseError
       Right rs   -> return rs 
 
 

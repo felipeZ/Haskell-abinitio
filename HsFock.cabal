@@ -52,7 +52,6 @@ Library
     , process
     , repa     == 3.4.*
     , repa-algorithms
-    , transformers
     , vector   == 0.10.* 
     , vector-algorithms
 
@@ -107,7 +106,6 @@ executable hsFock
     , process
     , repa            == 3.4.*
     , repa-algorithms == 3.4.*
-    , transformers
     , vector          == 0.10.*
     , vector-algorithms
 

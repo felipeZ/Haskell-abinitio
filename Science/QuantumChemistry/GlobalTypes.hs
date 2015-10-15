@@ -133,9 +133,6 @@ data Choice a = Ignore | Take a  deriving (Show,Functor)
 data Switch = ON | OFF
 
 
--- | Error Reporting
-data HSFOCKException =  SCFerror | IOerror | XYZParseError   deriving (Show,Typeable)
-
 -- | Command Line parsing Data types
 data HSFOCK =  HSFOCK {
                     scf       :: Bool
@@ -155,7 +152,6 @@ newtype Recursive a = Recursive {runRecursive :: a -> a}
 
 
  -- =================> INSTANCES <===================
-instance Exception HSFOCKException
                       
 instance Bounded Funtype where
   minBound = S
@@ -327,8 +323,9 @@ getAxesMom symb =
 
 -- ===================> Map of the atomic element to nuclear charge <=============
 -- | String to Nuclear Charge
-atom2charge :: M.Map String Int
-atom2charge = M.fromList 
+atom2Charge :: M.Map String Double
+atom2Charge = M.fromList 
              [("H",1),("He",2),("Li",3),("Be",4),("B",5),
               ("C",6),("N",7),("O",8),("F",9),("Ne",10),
               ("Na",11),("Mg",12)]
+
