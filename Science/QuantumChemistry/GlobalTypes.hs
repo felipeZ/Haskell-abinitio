@@ -134,16 +134,19 @@ data Switch = ON | OFF
 
 
 -- | Command Line parsing Data types
-data HSFOCK =  HSFOCK {
-                    scf       :: Bool
+data HSFOCK =
+            HSFOCK {scf       :: Bool
                    ,basis     :: String
                    ,charge    :: Double
                    ,multi     :: Int                     
                    ,xyz       :: FilePath
                    ,outFile   :: FilePath
                    -- ,inputFile :: FilePath
-
-                   } deriving (Show, Data, Typeable)
+                   }
+            |
+            BasisConfig {
+                        basisPath  :: FilePath
+                        } deriving (Show, Data, Typeable)
 
 
 -- ================> NEWTYPES <========================
@@ -323,8 +326,8 @@ getAxesMom symb =
 
 -- ===================> Map of the atomic element to nuclear charge <=============
 -- | String to Nuclear Charge
-atom2Charge :: M.Map String Double
-atom2Charge = M.fromList 
+atomLabel2Charge :: M.Map String Double
+atomLabel2Charge = M.fromList 
              [("H",1),("He",2),("Li",3),("Be",4),("B",5),
               ("C",6),("N",7),("O",8),("F",9),("Ne",10),
               ("Na",11),("Mg",12)]

@@ -3,14 +3,15 @@
 module Science.QuantumChemistry.HsFock.Initialize where 
 
 -- =============================> Standard and third party libraries <=================
-import Control.Exception (throwIO)
+import Control.Exception (throw)
 import qualified Data.Map as M
-
+import Text.Printf
 
 -- =================> Internal Modules <======================
 import Science.QuantumChemistry.Error (HSFOCKException(..))
-import Science.QuantumChemistry.GlobalTypes (AtomData, CGF(..), HSFOCK(..),ZNumber)
+import Science.QuantumChemistry.GlobalTypes (AtomData(..), CGF(..), HSFOCK(..), ZNumber, atomLabel2Charge)
 import Science.QuantumChemistry.ParsecTools.ParseXYZ (parseFileXYZ)
+
 
 -- ============================================================
 
@@ -19,20 +20,17 @@ initializeAtoms :: HSFOCK -> (String -> IO () ) -> IO [AtomData]
 initializeAtoms HSFOCK{..} logger =
  do  atomsXYZ        <- parseFileXYZ xyz logger 
      let basisSetMap =  createBasisMap atomsXYZ basis 
-     createAtomData atomsXYZ basisSetMap logger 
+     return $ createAtomData atomsXYZ basisSetMap 
 
 
-createAtomData :: [(String,[Double])] -> M.Map String [CGF] -> (String -> IO ()) -> IO [AtomData]
-createAtomData atoms basisSetMap logger  = undefined
- -- mapM create atoms
- -- where create (l,xyz) = AtomData xyz
- --      lookupIO k m    =
- --               case M.lookup k m of
- --                    Nothing -> do let err = printf "unkown atom:%s\n" k
- --                                  logger (printf ) *> throwIO KeyError       
- --                    Just v  -> return v 
+createAtomData :: [(String,[Double])] -> M.Map String [CGF] -> [AtomData]
+createAtomData atomsXYZ basisSetMap = map create atomsXYZ
+ where create (l,xyz) = AtomData xyz (lookupAtom l basisSetMap)  (lookupAtom l atomLabel2Charge)
+       lookupAtom k m   = case M.lookup k m of
+                          Nothing -> throw  KeyError       
+                          Just v  ->  v 
 
 createBasisMap :: [(String,[Double])] -> String -> M.Map String [CGF] 
-createBasisMap = undefined
+createBasisMap atomsXYZ basis = undefined
 
 
