@@ -30,8 +30,7 @@ Library
     -threaded
 
   build-depends:
-      async
-    , attoparsec
+      attoparsec
     , base   == 4.8.*        
     , bytestring
     , Cabal  
@@ -39,6 +38,7 @@ Library
     , containers
     , deepseq
     , directory
+    , download-curl
     , either
     , erf
     , filepath
@@ -84,8 +84,7 @@ executable hsFock
     -threaded
 
   build-depends:
-      async
-    , attoparsec
+      attoparsec
     , base == 4.8.*
     , bytestring
     , Cabal  
@@ -109,7 +108,8 @@ executable hsFock
     , vector          == 0.10.*
     , vector-algorithms
 
-  other-modules: 
+  other-modules:
+         Science.QuantumChemistry.BasisSet
          Science.QuantumChemistry.ConcurrencyTools.Logger
          Science.QuantumChemistry.HartreeFock.BasisOrthogonalization
          Science.QuantumChemistry.HartreeFock.Derivatives

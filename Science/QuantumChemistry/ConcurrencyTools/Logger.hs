@@ -1,6 +1,6 @@
 
 -- The HaskellFock SCF Project
--- @2013 Felipe Zapata, Angel Alvarez, Alessio Valentini
+-- @2013-2015 Felipe Zapata, Angel Alvarez, Alessio Valentini
 
 -- | Function to log events Taking as model the logger Implementation of 
 -- Simon Marlow in "Parallel and Concurrent Programming
@@ -9,7 +9,6 @@
 module Science.QuantumChemistry.ConcurrencyTools.Logger where
 
 import Control.Concurrent
-import Control.Concurrent.Async
 import Control.Concurrent.Chan
 
 
