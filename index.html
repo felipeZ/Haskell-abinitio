@@ -29,21 +29,25 @@
       <div class="inner clearfix">
         <section id="main-content">
           <h3>
+<a id="ab-initio-simulation" class="anchor" href="#ab-initio-simulation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Ab initio simulation</h3>
+
+<p>Ab initio molecular modeling is a branch of computational chemistry that, for a set of given atoms, solves the
+ Schrödinger equation (the analogous of Newton’s equation in quantum mechanics), with no inclusion of parameters derived from experimental data. In such systems it is quite easy to calculate forces between nuclei but things get tricky when we calculate
+the potential energy contribution of forces related to electrons.  In this case we can adopt a first approximation, the so called Hartree-Fock, that considers the electron-electron repulsion as an average between each electron and the mean field of all the others. This theory is right now the cornerstone of more sophisticated methods, such Multiconfigurational Methods, Møller-Plesset Perturbation Theory or Coupled Cluster, and the mathematical models behind its implementation are vastly used throughout the world of computational chemistry.</p>
+
+<h3>
 <a id="joining-two-worlds" class="anchor" href="#joining-two-worlds" aria-hidden="true"><span class="octicon octicon-link"></span></a>Joining two worlds</h3>
 
-<p>Haskell and its underlying theory has made us ask ourself some irresistible questions: 
- have those equations written in the piece of paper the same mathematical
-meaning  of  those  that  we  have  implemented  in  Fortran?   If  programming  is  as
-much mathematical as it is artistic creation, then why are we still working with
-such twisted and ugly ideas?  You ask the same questions to your workmates and
-professors, and after a while working locked in your ooffice, you will find out that an
-angry mob of Fortran programmers is waiting outside.  After all, you dared to say
-that a pure and lazy functional language is the future of programming in science!</p>
+<p>The set of problems inherent in computational chemistry are mainly due to the theoretical models complexity and the need of reducing as much as possible the computational time, leading to a demand of extremely solid and efficient software. What is happening in the actual context is the result of a poor interface between the two adjoining worlds of chemist and computer science and the necessity of publishing papers and scientific material to raise funds.  This usually leads to software hastily developed by a few chemists with only a side-interest in programming and therefore a limited skill set.</p>
+
+<p>The very few software that can be deemed remarkable are usually the result of massive funding, and even those packages are now facing huge problems in terms of parallelization, concurrency and stability of the code.Most of the efforts are spent trying to fix these issues instead of being addressed at developing better code (improve modularity and intelligibility) or new features and new algorithms.</p>
+
+<p>We witness the proliferation of projects that serve no other purpose than to provide a bridge between different software, while the main core of molecular modeling codes, in most cases written in Fortran 77, remains untouched since the eighties.</p>
 
 <h3>
 <a id="the-hartree-fock-method" class="anchor" href="#the-hartree-fock-method" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Hartree-Fock Method</h3>
 
-<p>This package can calculate the Hartree Fock energy of a given molecule geometry and a basis set solving the Roothaan Hall equations through a self consistent field procedure. It uses the Harris Functional as an initial density guess and the DIIS method to greatly improve the convergence. The entire code is written using the<a href="https://hackage.haskell.org/package/repa">Repa</a> library and focusing our efforts on efficiency, parallelism and code readability. Using Haskell’s higher order abstraction we are trying to develop an EDSL appropriate for quantum mechanics problems, creating code operators able to fairly mimic the physical ones.
+<p>This package can calculate the Hartree Fock energy of a given molecule geometry and a basis set solving the Roothaan Hall equations through a self consistent field procedure. It uses the Harris Functional as an initial density guess and the DIIS method to greatly improve the convergence. The entire code is written using the <a href="https://hackage.haskell.org/package/repa">Repa</a> library and focusing our efforts on efficiency, parallelism and code readability. Using Haskell’s higher order abstraction we are trying to develop an EDSL appropriate for quantum mechanics problems, creating code operators able to fairly mimic the physical ones.
 The original idea of the project can be found at <a href="https://themonadreader.files.wordpress.com/2013/03/issue214.pdf">Haskell ab initio</a></p>
         </section>
 
