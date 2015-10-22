@@ -1,5 +1,5 @@
 name:         HartreeFock
-version:      0.2.0.0
+version:      0.1.0.0
 synopsis:     Hartree-Fock SCF method for ab-initio computational chemistry. 
 description:  Hartree-Fock Self Consistent Field method is the foundation of modern ab-inito computational chemistry. 
               This package aims to overcome many years of painful Fortran programming while bringing as much 
@@ -25,20 +25,21 @@ Library
     -fno-liberate-case
     -funfolding-use-threshold1000
     -funfolding-keeness-factor1000
---    -fllvm
+    -- -fllvm
     -optlo-O3
     -threaded
 
   build-depends:
-      attoparsec
+      async
+    , attoparsec
     , base   == 4.8.*        
     , bytestring
-    , Cabal  
+    , Cabal
+    , cereal          
     , cmdargs
     , containers
     , deepseq
     , directory
-    , download-curl
     , either
     , erf
     , filepath
@@ -84,10 +85,12 @@ executable hsFock
     -threaded
 
   build-depends:
-      attoparsec
+      async 
+    , attoparsec
     , base == 4.8.*
     , bytestring
-    , Cabal  
+    , Cabal
+    , cereal               
     , cmdargs
     , containers
     , deepseq
@@ -127,8 +130,8 @@ executable hsFock
          Science.QuantumChemistry.NumericalTools.JacobiMethodST
          Science.QuantumChemistry.NumericalTools.LinearAlgebra 
          Science.QuantumChemistry.NumericalTools.VectorTools
-         Science.QuantumChemistry.ParsecTools.BasisParser 
-         Science.QuantumChemistry.ParsecTools.ParseUtils
+         Science.QuantumChemistry.ParsecTools
+
          
 
   default-language:    Haskell2010

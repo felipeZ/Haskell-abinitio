@@ -24,6 +24,7 @@ import Distribution.Version
 import Paths_HartreeFock as HsApp
 
 -- =================> Internal Modules <======================
+import Science.QuantumChemistry.BasisSet.SerializeBasis    -- process a plain text basis set to binary
 import Science.QuantumChemistry.ConcurrencyTools.Logger    -- Logger functions 
 import Science.QuantumChemistry.GlobalTypes
 
@@ -54,7 +55,7 @@ hsFock = HSFOCK
                   &= help "The Hartree-Fock method implemented in Haskell"
 
 
-basisConfig = BasisConfig { basisPath = def &= help "Path to the File that store the basis set" &= typFile}
+basisConfig = BasisConfig { basisPath = def &= help "Path to the File that containts the basis set format as plain text" &= typFile}
   
 
 defaultPathBasis :: IO FilePath
@@ -107,7 +108,7 @@ doSCF hs@HSFOCK{..} = do
 
 
 doBasisConfig :: HSFOCK -> IO ()
-doBasisConfig opts@BasisConfig{..} = undefined
+doBasisConfig opts@BasisConfig{..} = serializeBasisFile basisPath
 
   -- if (not . null $  basisPath )
   --    then return basisPath
