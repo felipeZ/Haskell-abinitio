@@ -60,7 +60,8 @@ Library
         BangPatterns
         DeriveDataTypeable
 
-  exposed-modules: 
+  exposed-modules:
+        Science.QuantumChemistry.BasisSet
         Science.QuantumChemistry.ConcurrencyTools
         Science.QuantumChemistry.HartreeFock
         Science.QuantumChemistry.HsFock
@@ -114,22 +115,10 @@ executable hsFock
   other-modules:
          Science.QuantumChemistry.BasisSet
          Science.QuantumChemistry.ConcurrencyTools.Logger
-         Science.QuantumChemistry.HartreeFock.BasisOrthogonalization
-         Science.QuantumChemistry.HartreeFock.Derivatives
-         Science.QuantumChemistry.HartreeFock.DIIS
-         Science.QuantumChemistry.HartreeFock.HartreeFock
-         Science.QuantumChemistry.HsFock.Initialize
-         Science.QuantumChemistry.HsFock.OptsCheck
-         Science.QuantumChemistry.HsFock.Project
-         Science.QuantumChemistry.HsFock.SampleProjects
-         Science.QuantumChemistry.Integrals.IntegralsEvaluation 
-         Science.QuantumChemistry.NumericalTools.Boys 
-         Science.QuantumChemistry.NumericalTools.EigenValues
-         Science.QuantumChemistry.NumericalTools.GaussElimination
-         Science.QuantumChemistry.NumericalTools.JacobiMethod
-         Science.QuantumChemistry.NumericalTools.JacobiMethodST
-         Science.QuantumChemistry.NumericalTools.LinearAlgebra 
-         Science.QuantumChemistry.NumericalTools.VectorTools
+         Science.QuantumChemistry.HartreeFock
+         Science.QuantumChemistry.HsFock
+         Science.QuantumChemistry.Integrals
+         Science.QuantumChemistry.NumericalTools
          Science.QuantumChemistry.ParsecTools
 
          

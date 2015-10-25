@@ -4,10 +4,12 @@ module Science.QuantumChemistry.HsFock.Initialize where
 
 -- =============================> Standard and third party libraries <=================
 import Control.Exception (throw)
-import qualified Data.Map as M
+import Data.List (nub)
+import qualified Data.Map.Strict as M
 import Text.Printf
 
 -- =================> Internal Modules <======================
+import Science.QuantumChemistry.BasisSet.FetchBasis (createBasisMap)
 import Science.QuantumChemistry.Error (HSFOCKException(..))
 import Science.QuantumChemistry.GlobalTypes (AtomData(..), CGF(..), HSFOCK(..), ZNumber, atomLabel2Charge)
 import Science.QuantumChemistry.ParsecTools.ParseXYZ (parseFileXYZ)
@@ -19,7 +21,8 @@ import Science.QuantumChemistry.ParsecTools.ParseXYZ (parseFileXYZ)
 initializeAtoms :: HSFOCK -> (String -> IO () ) -> IO [AtomData]
 initializeAtoms HSFOCK{..} logger =
  do  atomsXYZ        <- parseFileXYZ xyz logger 
-     let basisSetMap =  createBasisMap atomsXYZ basis 
+     let uniqueElems  = nub $ map fst atomsXYZ
+     basisSetMap <- createBasisMap uniqueElems basis   
      return $ createAtomData atomsXYZ basisSetMap 
 
 
@@ -30,7 +33,5 @@ createAtomData atomsXYZ basisSetMap = map create atomsXYZ
                           Nothing -> throw  KeyError       
                           Just v  ->  v 
 
-createBasisMap :: [(String,[Double])] -> String -> M.Map String [CGF] 
-createBasisMap atomsXYZ basis = undefined
 
 

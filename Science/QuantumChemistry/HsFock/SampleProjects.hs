@@ -9,7 +9,7 @@ module Science.QuantumChemistry.HsFock.SampleProjects where
 import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.HartreeFock.HartreeFock
 import Science.QuantumChemistry.HsFock.Project
-import Science.QuantumChemistry.NumericalTools.Utils (normGlobal)
+import Science.QuantumChemistry.BasisSet.NormalizeBasis (normGlobal)
 
 
 project :: String -> String -> ProjectData

@@ -6,12 +6,16 @@
 
 module Science.QuantumChemistry.ParsecTools.ParserBasis
     (
-        parseBasisFile
+      Element(..)
+     ,GaussShape(..)
+     ,parseBasisFile
     ) where
 
 -- ====================> Standard Modules and third party <==============================    
-import GHC.Generics
 import Data.Attoparsec.ByteString.Char8 
+import Data.Serialize 
+import GHC.Generics
+
 
 -- ====================> Internal Modules <=======================
 import Science.QuantumChemistry.GlobalTypes 
@@ -21,14 +25,18 @@ import Science.QuantumChemistry.ParsecTools.ParseUtils
 type AtomLabel = String
 
 data GaussShape = 
-      S  Double Double               -- | A S  type Gaussian primitive
-    | SP Double Double Double Double -- | A SP type Gaussian primitives contains shared data among S and P types, gaussian functions 
-    | P  Double Double               -- | A P  type Gaussian primitive
-    | D  Double Double               -- | A D  type Gaussian primitive
+      S0 [(Double,Double)]         -- | A S  type Gaussian primitive (Coefficient,Exponent)
+    | SP [(Double,Double,Double)]  -- | A SP type Gaussian primitives contains shared data among S and P types, gaussian functions (Coeficcient S , Coefficcient P, Exponent)
+    | P  [(Double,Double)]         -- | A P  type Gaussian primitive (Coefficient,Exponent)
+    | D  [(Double,Double)]         -- | A D  type Gaussian primitive (Coefficient,Exponent)
     deriving (Generic, Show)
-    
+
+instance Serialize GaussShape
+             
 -- Basic elements living along the lines of a basis file
 data Element =   Atom  AtomLabel [GaussShape]  deriving (Generic, Show)
+
+instance Serialize Element
 
 -- ====================================== Main processing functions ================================
 

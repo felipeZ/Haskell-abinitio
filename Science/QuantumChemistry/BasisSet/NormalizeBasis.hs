@@ -1,16 +1,11 @@
 
 
-module Science.QuantumChemistry.NumericalTools.Utils (
-             fac
-            ,facOdd
-            ,normGlobal
-             )where
+module Science.QuantumChemistry.BasisSet.NormalizeBasis ( normGlobal ) where 
 
 
+-- ==================> Standard and third party libraries <=================
 import Control.Arrow ((&&&))
-import Control.Applicative ((<$>),(<*>))
-import Data.Foldable (sum)
-import Prelude hiding (sum)
+
 
 -- Internal modules 
 import Science.QuantumChemistry.GlobalTypes
@@ -29,6 +24,7 @@ normGlobal cgf@(CGF ps l) =  CGF newPrimitives l
         newPrimitives = zip newCs es 
 
 
+-- =================> Internal Modules <======================
 {- |The norm of each contracted is given by the following equation
     N = sqrt $ ((2l -1)!! (2m-1)!! (2n-1)!!)/(4*expo)^(l+m+n)  * (pi/(2*e))**1.5
     where expo is the exponential factor of the contracted -}
@@ -58,6 +54,3 @@ normCoeff b1    = zipWith fun cs es
 --         ang x = prod / (4*x)^(sum indexes)
 --         prod = product $ fmap (\k -> facOdd (2*k -1)) indexes
 --         indexes = fmap (LA.map2val mapLAngular) $ zip (repeat orbType) [0..2]
-
-
-

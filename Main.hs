@@ -13,8 +13,6 @@ import Control.Concurrent (getNumCapabilities)
 import System.Console.CmdArgs
 import System.Directory (getHomeDirectory)
 import System.Environment (getArgs, withArgs)
-import System.FilePath
-import System.FilePath.Posix ((</>))
 import Text.Printf
 
 
@@ -55,13 +53,10 @@ hsFock = HSFOCK
                   &= help "The Hartree-Fock method implemented in Haskell"
 
 
-basisConfig = BasisConfig { basisPath = def &= help "Path to the File that containts the basis set format as plain text" &= typFile}
+basisConfig = BasisConfig
+   { basisPath = def &= help "Path to the File that containts the basis set format as plain text"
+     }
   
-
-defaultPathBasis :: IO FilePath
-defaultPathBasis = do
-  home <- getHomeDirectory 
-  return (home </> ".basisSetHSFOCK")
   
 -- =======================<>=================================================
 
