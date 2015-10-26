@@ -24,8 +24,8 @@ checkOpts opts@HSFOCK{..}= do
   when (multi <= 0) $ printExit "Multiplicity must be 1 (singlet), 2(doblet), etc."
   --todo check that basis set exist
   [xyzBool,outBool]   <- mapM doesFileExist [xyz,outFile]
-  when (xyzBool) . printExit $ printf "Coordinates File %s does not exist" xyz 
-  when (outBool) . printExit $ printf "file %s is going to be overwritten\n" outFile 
+  when (not xyzBool) . printExit $ printf "Coordinates File %s does not exist" xyz 
+  when (outBool)     . printExit $ printf "file %s is going to be overwritten\n" outFile 
 
    where printExit s = putStrLn s *> exitFailure 
 

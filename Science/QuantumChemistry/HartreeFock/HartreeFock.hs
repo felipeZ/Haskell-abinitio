@@ -23,7 +23,7 @@ module Science.QuantumChemistry.HartreeFock.HartreeFock (
      ,sortKeys
      ) where
      
-import Control.Applicative
+
 import Control.Arrow ((&&&))
 import Control.Monad.List(guard)
 import Control.Monad (liftM,(<=<))

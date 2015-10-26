@@ -36,7 +36,8 @@ import Science.QuantumChemistry.HsFock.OptsCheck           -- Sanity options che
 import Science.QuantumChemistry.HsFock.Project             -- We define a generic project skeleton for sample data
 import Science.QuantumChemistry.HsFock.SampleProjects      -- We include several sample projects for ease of testing
 
-
+import Science.QuantumChemistry.Integrals.IntegralsEvaluation  (hcore)
+import Science.QuantumChemistry.NumericalTools.TableBoys   (generateGridBoys)
 -- ============================================================
 
 
@@ -70,7 +71,7 @@ progAuthors = "@2015 Felipe Zapata, Angel Alvarez, Alessio Valentini"
 -- | Keep calm and curry on
 processors :: Int -> IO ()
 processors c = 
-    printf "%d processor %s detected.\n" (show c) (core2string c)
+    printf "%s processor %s detected.\n" (show c) (core2string c)
     where
         core2string :: Int -> String
         core2string c =if  c > 1 then "cores" else "core"
@@ -92,48 +93,44 @@ doSomething :: HSFOCK -> IO ()
 doSomething opts@HSFOCK{..}      = doSCF opts
 doSomething opts@BasisConfig{..} = doBasisConfig opts
 
-doSCF :: HSFOCK -> IO ()
-doSCF hs@HSFOCK{..} = do
-  putStrLn "Starting main SCF calculations, please wait...."
-  logger      <- initLogger outFile
-  atoms       <- initializeAtoms hs (logMessage logger)
-  hartreeData <- scfHF atoms charge (logMessage logger)
-  logMessage logger "Hartree-Fock has succeeded !!!\n"
-  logStop logger
+-- doSCF :: HSFOCK -> IO ()
+-- doSCF hs@HSFOCK{..} = do
+--   putStrLn "Starting main SCF calculations, please wait...."
+--   logger      <- initLogger outFile
+--   atoms       <- initializeAtoms hs (logMessage logger)
+--   hartreeData <- scfHF atoms charge (logMessage logger)
+--   logMessage logger "Hartree-Fock has succeeded !!!\n"
+--   logStop logger
 
 
 doBasisConfig :: HSFOCK -> IO ()
 doBasisConfig opts@BasisConfig{..} = serializeBasisFile basisPath
 
-  -- if (not . null $  basisPath )
-  --    then return basisPath
-  --    else defaultPathBasis  
 
-
-
--- doSCF :: Options -> IO ()
--- doSCF optsR = do
---     logger <- initLogger "water_sto_3g.out"
---     let projectdata = project "water" "STO-3G"
---         charge = 0
---         atom1 = AtomData r1 baseO 8.0
---         atom2 = AtomData r2 baseH 1.0
---         atom3 = AtomData r3 baseH 1.0
---         [r1, r2, r3] = atomList projectdata
---         [baseH,baseO] = pBasis projectdata
---     logMessage logger "Starting main SCF calculations, please wait....\n"
---     logMessage logger "number of shells: "
---     logMessage logger $ printf "%d\n" $  sum . fmap (length . getBasis) $ [atom1,atom2,atom3]
---     mtxS <- mtxOverlap  [atom1,atom2,atom3]
---     logMessage logger $ show mtxS
---     hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
---     logMessage logger "Hartree-Fock has succeeded !!!\n"
---     logMessage logger "HF\n"
---     logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
---     -- logMessage logger "Calculating the gradient\n"
---     -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
---     -- logMessage logger $ show gradient
---     logMessage logger "The answer is 42!!"
---     logStop logger    
+doSCF :: HSFOCK -> IO ()
+doSCF _ = do
+    logger <- initLogger "water_sto_3g.out"
+    let projectdata = project "water" "STO-3G"
+        charge = 0
+        atom1 = AtomData r1 baseO 8.0
+        atom2 = AtomData r2 baseH 1.0
+        atom3 = AtomData r3 baseH 1.0
+        [r1, r2, r3] = atomList projectdata
+        [baseH,baseO] = pBasis projectdata
+        gridBoys   = generateGridBoys 0.1 -- ^gridBoys dx, where mMax is the maximum order of the boys function and dx the grid delta
+    logMessage logger "Starting main SCF calculations, please wait....\n"
+    logMessage logger "Core Matrix: "
+    core <- hcore gridBoys [atom1,atom2,atom3]
+    -- mtxS <- mtxOverlap  [atom1,atom2,atom3]
+    logMessage logger $ show core
+    hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
+    logMessage logger "Hartree-Fock has succeeded !!!\n"
+    logMessage logger "HF\n"
+    logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
+    logMessage logger "Calculating the gradient\n"
+    -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
+    -- logMessage logger $ show gradient
+    logMessage logger "The answer is 42!!"
+    logStop logger    
 
 

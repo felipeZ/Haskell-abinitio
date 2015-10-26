@@ -39,11 +39,9 @@
 
 module Science.QuantumChemistry.NumericalTools.Boys where
 
-import Data.Foldable (mapM_,product)
 import Data.Number.Erf
 import qualified Data.Vector.Unboxed as U
 import Math.Gamma
-import Prelude hiding (mapM_,product)
 
 -- Internal modules
 import Science.QuantumChemistry.GlobalTypes (VecUnbox)

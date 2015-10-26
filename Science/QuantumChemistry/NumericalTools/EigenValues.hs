@@ -14,6 +14,7 @@ import Numeric.LinearAlgebra.HMatrix (eigSH')
 
 -- =================> Internal Modules <======================
 import Science.QuantumChemistry.GlobalTypes (VecUnbox)
+import Science.QuantumChemistry.NumericalTools.JacobiMethod (jacobiP)
 import Science.QuantumChemistry.NumericalTools.VectorTools (sortEigenData)
 
 -- -------------------> <-----------------
@@ -21,6 +22,8 @@ import Science.QuantumChemistry.NumericalTools.VectorTools (sortEigenData)
 eigenSolve :: Array U DIM2 Double -> (VecUnbox, Array U DIM2 Double)
 eigenSolve arr = (vs, fromUnboxed (extent arr) mtx )
   where (vs,mtx) = sortEigenData $ hv2VecUnbox *** hm2VecUnbox $ eigSH' $ repa2HM arr 
+
+
 
 
 -- ---------------------> <------------------------------
