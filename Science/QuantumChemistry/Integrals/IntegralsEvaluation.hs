@@ -22,6 +22,7 @@ module Science.QuantumChemistry.Integrals.IntegralsEvaluation
   -- )
   where
 
+-- =============================> Standard and third party libraries <===============================
 import Control.Applicative
 import Control.Arrow ((&&&),first,second)
 import Control.DeepSeq
@@ -41,7 +42,8 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Vector.Unboxed as U
 import Prelude hiding (all,any,product,sum)
 
--- internal modules 
+
+-- =================> Internal Modules <======================
 import Science.QuantumChemistry.NumericalTools.Boys(boysF)
 import Science.QuantumChemistry.GlobalTypes
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra as LA
@@ -51,14 +53,12 @@ import Science.QuantumChemistry.NumericalTools.TableBoys (Boys,boysTaylor)
 {- | This module is based on chapter 9 "Molecular Integral Evaluation" in the book
    "Molecular Electronic-Structure Theory". Authors: Trygve Helgaker, Poul Jorgensen and Jeppe Olsen
 
-   | Remember that the Gaussian primitives are not normalized they must be multiplied for a factor sqr (4*alfa/pi)
+   | The Gaussian primitives are not normalized they must be multiplied for a factor sqr (4*alfa/pi)
    | where alfa is the coefficient of the gaussian function-}
-
--- parMap strat f xs = L.map f xs `using` parList strat
 
 
 -- =================================================================================================
--- == the Monad List are used for calculating the elements of the lower triangular matrix         ==
+-- == the Monad List are used to calculate the elements of the lower triangular matrix            ==
 -- == the elements of the triangular matrix is equal to (n^2 + n) / 2 with n the number of atoms  ==
 -- =================================================================================================
 
@@ -67,7 +67,6 @@ import Science.QuantumChemistry.NumericalTools.TableBoys (Boys,boysTaylor)
 -- | the cartesian product between basis, CGF and primitive gaussian functions.
 -- |  Therefore the integration is of 3 levels.
 -- =================================================================================================
-
 
 -- ==============> TYPES <=============
 
@@ -203,27 +202,29 @@ sab g1@(Gauss r1 shellA (c1,e1)) g2@(Gauss r2 shellB (c2,e2)) =
 
 -- | ObaraSaika Scheme to calculate overlap integrals
 obaraSaika ::Double -> Double -> Double -> Double -> Int -> Int  -> Double
-obaraSaika gamma s00 pax pbx i j = s i j
+obaraSaika gamma s00 pax pbx = s 
 
   where pred2 = pred . pred
-        c = recip $ 2.0 * gamma
-        s !m !n | m < 0 || n < 0   =  0.0
-                | all (== 0) [m,n] =  s00
-                | m == 0 =   pbx * s 0 (pred n) + c* n_1 * s 0 (pred2 n) 
-                | n == 0 =   pax * s (pred m) 0 + c* m_1 * s (pred2 i) 0
-                | otherwise  = pax * (s (pred m) n) + c * m_1 * s (pred2 m) n +  fromIntegral n * s (pred m) (pred n)
+        c     = recip $ 2.0 * gamma
+        s m n | m < 0 || n < 0   =  0
+              | all (== 0) [m,n] =  s00
+              | m == 0    =  pbx * s 0 (pred n) + c* n_1 * s 0 (pred2 n)
+              | n == 0    =  pax * s (pred m) 0 + c* m_1 * s (pred2 m) 0
+              | otherwise =  pax * s (pred m) n + c * (m_1 * (s (pred2 m) n) +
+                               (fromIntegral n) * s (pred m) (pred n))
+
           where [m_1,n_1] = fmap (fromIntegral . pred) [m,n]
-         
+
+                
 -- ====================> HAMILTONIAN CORE <=======================
 
 -- | Core Hamiltonian Matrix Calculation
 hcore :: Monad m => ML.Map Boys Double -> [AtomData] -> m (Array U DIM1 Double)
 hcore gridBoys atoms  = computeUnboxedP . fromFunction (Z:. dim) $
- (\idx -> let (Z:.i:.j) = LA.indexFlat2DIM2 norbital idx
+ (\idx -> let (Z:.i:.j)     = LA.indexFlat2DIM2 norbital idx
               [atomi,atomj] =  calcIndex <$> [i,j]
-              derv = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
-              -- sumVij = sum $!! L.zipWith (\z rc -> ((-z) * atomi <<|Vij rc derv |>> atomj)) atomicZ coords
-              sumVij = sum $!! L.zipWith (\z rc -> ((-z) * vijContracted gridBoys atomi rc atomj derv ) ) atomicZ coords              
+              derv          = (Dij_Ax 0, Dij_Ay 0, Dij_Az 0)
+              sumVij        = sum $ L.zipWith (\z rc -> ((-z) * vijContracted gridBoys atomi rc atomj derv ) ) atomicZ coords              
              in (atomi <<|Tij|>> atomj) + sumVij)
 
   where coords    = fmap getCoord atoms
@@ -268,10 +269,10 @@ tab gA@(Gauss r1 shell1 (c1,e1)) gB@(Gauss !r2 !shell2 (!c2,!e2)) =
         s00     = ((*cte) . expo . (^2)) <$>  L.zipWith (-) r1 r2
         t00 x   = e1 - 2*e1^2 *((pa !! x)^2 + recip (2*gamma)) * (s00 !! x )
         expo x2 = exp $ -mu * x2
-        [pa,pb] = fmap (L.zipWith (-) p)  [r1,r2]
-        p = meanp (e1,e2) r1 r2
-        gamma = e1+ e2
-        mu = e1*e2/gamma        
+        [pa,pb] = (L.zipWith (-) p) <$>  [r1,r2]
+        p       = meanp (e1,e2) r1 r2
+        gamma   = e1+ e2
+        mu      = e1*e2/gamma        
         
 permute :: [a -> b] -> [a] -> [[b]]
 permute [f,g,h] xs = fmap (\ x -> L.zipWith ($) x xs) [[f, g, h], [g, f, h], [g, h, f]]
@@ -395,7 +396,7 @@ vijHermite gridBoys g1 g2 rc derv = ((-1)^sumDervExpo) * cte * mcMurchie gridBoy
         [(c1,e1),(c2,e2)] = fmap gaussP [g1,g2]
         sumDervExpo = getExponentDerivatives derv
 
---  McMURCHIE -DAVIDSON scheme of the primitive gaussians       
+-- |  McMURCHIE -DAVIDSON scheme of the primitive gaussians       
 mcMurchie :: ML.Map Boys Double -> [Funtype] -> [NucCoord]  -> (Exponent,Exponent) -> CartesianDerivatives -> Double
 mcMurchie gridBoys shells [ra,rb,rc] (e1,e2) derv =  U.sum $ coeff `deepseq` rtuv `deepseq` U.zipWith (*) coeff rtuv
  where coeff = calcHermCoeff [rpa,rpb] gamma seedC 
@@ -518,9 +519,9 @@ genCoeff_Integral symbols (Dij_Ax e, Dij_Ay f, Dij_Az g) =
 -- ==============> Auxiliar Functions <===============
 
 
---(2k -1) !! = (2k)!/(2^k * k!)
--- i = 2k - 1 => k = (i + 1)/ 2
 -- | Odd factorial function
+-- | (2k -1) !! = (2k)!/(2^k * k!)
+-- | where i = 2k - 1 => k = (i + 1)/ 2
 facOdd ::Int -> Double
 facOdd  i | even i  = error "Factorial Odd function required an odd integer as input"
           | otherwise  = case compare i 2 of
@@ -535,7 +536,6 @@ fac i | i < 0   = error "The factorial function is defined only for natural numb
       | otherwise = product [1..i]
 
 
-
 -- | Square internuclear distance function
 rab2 :: NucCoord -> NucCoord -> Double
 rab2 a b = sum . fmap (^2). L.zipWith (-) a $ b
@@ -546,16 +546,6 @@ meanp (e1,e2) ra rb = (\(a,b) -> (e1*a + e2*b)/(e1+e2)) <$> L.zip ra rb
 
 restVect :: (NucCoord,NucCoord) -> NucCoord
 restVect (ra,rb) = L.zipWith (-) ra rb
-
--- normaCoeff :: CGF -> CGF
--- normaCoeff b1 = b1 { getPrimitives = newPrimitives}
---   where xs = getPrimitives b1
---         newPrimitives = fmap ((uncurry fun ) &&& (snd) ) xs
---         fun = \c e -> (c/) . sqrt $ (ang e) * (pi/(2*e))**1.5
---         ang x = prod / (4*x)^(sum indexes)
---         prod = product $ fmap (\k -> facOdd (2*k -1)) indexes
---         shell = getfunTyp  b1
---         indexes = fmap (LA.map2val mapLAngular) $ L.zip (repeat shell) [0..2]
 
 
 -- | Transform from the unary angular momentum representation to the corresponding integer value

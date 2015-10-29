@@ -3,10 +3,11 @@
 module Science.QuantumChemistry.BasisSet.FetchBasis where
 
 -- ==================> Standard and third party libraries <=================
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import qualified Data.ByteString as B
 import Data.Char (toLower)
 import qualified Data.Map.Strict  as M
+import Data.Maybe (fromMaybe)
 import Data.Serialize (decode)
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.Environment (getEnv)
@@ -41,7 +42,7 @@ createElemMap = foldr (\e@(Atom label _) acc -> M.insert label e acc) M.empty
 -- | Using The Coefficients and Exponents create a basis Set, represented as a list
 -- | of contracted Gauss functions
 createCGF :: [GaussShape] -> [CGF]
-createCGF gs = concatMap fun gs 
+createCGF = concatMap fun 
   where  cgf xs s = [normGlobal (CGF xs s)]
          fun      = \case 
                SP  xs -> let cs1 = fmap (\(c1, _, e) -> (c1,e)) xs
@@ -68,8 +69,8 @@ fetchBasis basis = do
 defaultPathBasis :: IO FilePath
 defaultPathBasis = do
   hsFockPath <- getEnv "HSFOCK"
-  boolDir    <- doesDirectoryExist $ hsFockPath
-  when (not boolDir) $ printOnExit "HsFock installation directory was not found, please add the following environmental variable to your profile\nHSFOCK=<path/to/the/HSFOCK/"
+  boolDir    <- doesDirectoryExist hsFockPath
+  unless boolDir $ printOnExit "HsFock installation directory was not found, please add the following environmental variable to your profile\nHSFOCK=<path/to/the/HSFOCK/"
   return (hsFockPath </> "data/basis")
 
      
@@ -80,10 +81,7 @@ defaultPathBasis = do
 translateBasisname :: String -> String
 translateBasisname = (++ ".basis") . fmap (replace . toLower)
  where rs        = [('+','m'),('*','s')]
-       replace x = case lookup x rs of
-                        Nothing -> x
-                        Just s  -> s
-
+       replace x = fromMaybe x (lookup x rs) 
 
 printOnExit :: String -> IO a
 printOnExit s = putStrLn s *> exitFailure 
