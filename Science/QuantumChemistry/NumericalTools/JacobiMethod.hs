@@ -37,9 +37,10 @@ jacobiP !arr = liftM (second (R.fromUnboxed sh) . sortEigenData .
 
 -- | Loop to carry out the corresponding rotation of the Jacobi Method
 loopJacobi :: Monad m => Matrix -> Matrix -> Step -> Tolerance -> m (VecUnbox,Matrix)
-loopJacobi !arr !prr step tolerance = if step > 5*dim^2 
-                                          then error "Jacobi method did not converge "
-                                          else if (arr ! mx) > tolerance then action else  liftM2 (,) (diagonal arr) (return prr)
+loopJacobi !arr !prr step tolerance
+             | step > 5*dim^2         =  error "Jacobi method did not converge "
+             | (arr ! mx) > tolerance = action
+             | otherwise              = liftM2 (,) (diagonal arr) (return prr)
   where (Z:.dim:. _) = extent arr
         mx@(Z:.k:.l) = maxElemIndex arr
         aDiff        = (arr ! (ix2 l l)) - (arr ! (ix2 k k))

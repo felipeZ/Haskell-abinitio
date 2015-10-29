@@ -5,6 +5,7 @@ module Science.QuantumChemistry.HsFock.Initialize where
 -- =============================> Standard and third party libraries <=================
 import Control.Exception (throw)
 import Data.List (nub)
+import Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as M
 import Text.Printf
 
@@ -29,9 +30,8 @@ initializeAtoms HSFOCK{..} logger =
 createAtomData :: [(String,[Double])] -> M.Map String [CGF] -> [AtomData]
 createAtomData atomsXYZ basisSetMap = map create atomsXYZ
  where create (l,xyz) = AtomData xyz (lookupAtom l basisSetMap)  (lookupAtom l atomLabel2Charge)
-       lookupAtom k m   = case M.lookup k m of
-                          Nothing -> throw  KeyError       
-                          Just v  ->  v 
+       lookupAtom k m = fromMaybe (throw KeyError) (M.lookup k m)
+
 
 
 

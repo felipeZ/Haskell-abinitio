@@ -43,9 +43,11 @@ module Science.QuantumChemistry.NumericalTools.LinearAlgebra (
 
 import Data.List (lookup, tails, transpose, zip5)
 import Control.Applicative
+import Control.Exception (throw)
 import Control.Monad(ap, liftM, mplus)
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Map as M
+import Data.Maybe (fromMaybe)
 import Data.Array.Repa          as R
 import Data.Array.Repa.Unsafe  as R
 import Data.Array.Repa.Algorithms.Matrix as R
@@ -54,7 +56,7 @@ import Prelude hiding (all,sum)
 
 -- ============> Internal imports <==============
 import Science.QuantumChemistry.GlobalTypes
-
+import Science.QuantumChemistry.Error (HSFOCKException(..))
 -- ========================> DATA TYPES <===================
 type DIM = Int
 type Indx = (Int,Int)
@@ -280,15 +282,10 @@ selectPosition n [i,j,k,l] =
 
 -- ==========> Lookup Functions <=================================
 map2indx :: Eq a  => [(a,b)]-> a -> b
-map2indx pairs indx= case lookup indx pairs of
-                          Just p -> p
-                          Nothing -> error "Boooooooommmmmmmm"
-
+map2indx pairs indx= fromMaybe (throw KeyError) (lookup indx pairs) 
                           
 map2val :: Ord k => M.Map k b -> k -> b
-map2val mapa key = case M.lookup key mapa of
-                        Just val -> val
-                        Nothing  -> error "Boooooooommmmmmmm"
+map2val mapa key = fromMaybe (throw KeyError) (M.lookup key mapa)
 
 calcCoordCGF :: [AtomData] -> Int -> (NucCoord,CGF)
 calcCoordCGF atoms i = fun 0 atoms

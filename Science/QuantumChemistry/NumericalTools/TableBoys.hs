@@ -17,13 +17,15 @@ module Science.QuantumChemistry.NumericalTools.TableBoys (
                                                         ,generateGridBoys
                                                          ) where
 
-import Control.Applicative ((<$>),(<*>))
-import Data.Foldable (mapM_)
+
+-- =============================> Standard and third party libraries <===============================
+import Control.Exception (throw)
 import Data.Map.Lazy as M
-import Prelude hiding (mapM_)
+import Data.Maybe (fromMaybe)
 import Text.Printf 
 
--- Internal modules
+-- =================> Internal Modules <======================
+import Science.QuantumChemistry.Error (HSFOCKException(..))
 import Science.QuantumChemistry.GlobalTypes (VecUnbox)
 import Science.QuantumChemistry.NumericalTools.PointsWeights
 import Science.QuantumChemistry.NumericalTools.Boys (asymptBoysF,boysF) 
@@ -62,9 +64,6 @@ generateGridBoys delta = M.fromList $ zip keys val
 calcBoys :: Map Boys Double -> Double -> Double -> Double
 calcBoys grid m x
   | x > 100  = asymptBoysF m x
-  | otherwise =               
-        let msg = printf "The requested Boys function is outside the chosen grid: boysF %f %f" m x
-        in case M.lookup (Boys m x) grid of
-                Just v  -> v
-                Nothing -> error msg
+  | otherwise = let msg = printf "The requested Boys function is outside the chosen grid: boysF %f %f" m x
+                in fromMaybe (error msg) (M.lookup (Boys m x) grid) 
 

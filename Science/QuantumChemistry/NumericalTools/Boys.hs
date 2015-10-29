@@ -62,24 +62,6 @@ boysF n x = k `seq` k / d
         z = -x
         d = (2 * n) + 1
 
-asymptBoysF ::  Double -> Double -> Double
-asymptBoysF m x = (fn / 2**(m+1)) * (sqrt $ pi / x ** (2*m +1))
- where fn = facOdd . floor $ 2*m -1 
-
-facOdd ::Int -> Double
-facOdd  i | i `rem`2 == 0  = error "Factorial Odd function required an odd integer as input"
-          | otherwise  = case compare i 2 of
-                             LT -> 1
-                             GT-> let k = (1 + i) `div ` 2
-                                  in (fromIntegral $ fac (2*k)) /  (2.0^k * (fromIntegral $ fac k))
-
--- | Factorial function
-fac :: Int -> Int
-fac i | i < 0   = error "The factorial function is defined only for natural numbers"
-      | i == 0  = 1
-      | otherwise = product [1..i]
-
-
 -- Boys function Upward Recurrence as stated on [2]
 -- boysF2 0 x = 
 -- boysF2 m x = a * b
@@ -95,6 +77,24 @@ fac i | i < 0   = error "The factorial function is defined only for natural numb
 --                 a = 1 / (2*m -1)
 --                 b = 2 * x * bF (m+1) x - (e ** (-x))
 --                 e = exp 1
+
+
+asymptBoysF ::  Double -> Double -> Double
+asymptBoysF m x = (fn / 2**(m+1)) * (sqrt $ pi / x ** (2*m +1))
+ where fn = facOdd . floor $ 2*m -1 
+
+facOdd ::Int -> Double
+facOdd  i | even i    = error "Factorial Odd function required an odd integer as input"
+          | otherwise = case compare i 2 of
+                             LT -> 1
+                             GT-> let k = (1 + i) `div ` 2
+                                  in (fromIntegral $ fac (2*k)) /  (2.0^k * (fromIntegral $ fac k))
+
+-- | Factorial function
+fac :: Int -> Int
+fac i | i < 0   = error "The factorial function is defined only for natural numbers"
+      | i == 0  = 1
+      | otherwise = product [1..i]
 
 
 
