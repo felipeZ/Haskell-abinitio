@@ -46,3 +46,32 @@ parseBasisFile fname = parseFromFile parseBasis fname
 parseBasis :: Parser [Element]
 parseBasis = undefined
 
+comment :: Parser ()
+comment = char '#' *> anyLine' *> endOfLine
+
+basisHeader :: Parser ()
+basisHeader = "BASIS \"ao basis\" PRINT" *> endOfLine
+
+parseLabel :: Parser ByteString
+parseLabel = takeWhile1 isAlpha_ascii
+parsePrimitiveBlock :: Parser GaussShape
+parsePrimitiveBlock = 
+
+#Basis SET: (4s,1p) -> [2s,1p]
+H    S
+     18.7311370              0.03349460       
+      2.8253937              0.23472695       
+      0.6401217              0.81375733       
+H    S
+      0.1612778              1.0000000        
+H    P
+      1.1000000              1.0000000        
+#BASIS SET: (4s,1p) -> [2s,1p]
+He    S
+     38.4216340              0.0237660        
+      5.7780300              0.1546790        
+      1.2417740              0.4696300        
+He    S
+      0.2979640              1.0000000        
+He    P
+      1.1000000              1.0000000
