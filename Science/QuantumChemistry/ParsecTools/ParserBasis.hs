@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric, LambdaCase , OverloadedStrings, TupleSections #-}
 -- Basis Parser, a parsec based parser for quantum chemistry basis files
 -- @2013-2015 Angel Alvarez, Felipe Zapata
 -- 
@@ -12,66 +12,90 @@ module Science.QuantumChemistry.ParsecTools.ParserBasis
     ) where
 
 -- ====================> Standard Modules and third party <==============================    
-import Data.Attoparsec.ByteString.Char8 
+import Control.Applicative (liftA)
+import Data.Attoparsec.ByteString.Char8 hiding (Number(..))
+import qualified Data.ByteString.Char8 as B
+import Data.List.Split (chunksOf)
 import Data.Serialize 
 import GHC.Generics
-
 
 -- ====================> Internal Modules <=======================
 import Science.QuantumChemistry.GlobalTypes 
 import Science.QuantumChemistry.ParsecTools.ParseUtils 
 
 -- ================================================ Types =============================================================
-type AtomLabel = String
+type AtomLabel = B.ByteString
 
 data GaussShape = 
-      S0 [(Double,Double)]         -- | A S  type Gaussian primitive (Coefficient,Exponent)
-    | SP [(Double,Double,Double)]  -- | A SP type Gaussian primitives contains shared data among S and P types, gaussian functions (Coeficcient S , Coefficcient P, Exponent)
-    | P  [(Double,Double)]         -- | A P  type Gaussian primitive (Coefficient,Exponent)
-    | D  [(Double,Double)]         -- | A D  type Gaussian primitive (Coefficient,Exponent)
+      S0 [(Double,Double)]         -- ^ A S  type Gaussian primitive (Coefficient,Exponent)
+    | SP [(Double,Double,Double)]  -- ^ A SP type Gaussian primitives contains shared data among S and P types, gaussian functions (Coeficcient S , Coefficcient P, Exponent)
+    | P  [(Double,Double)]         -- ^ A P  type Gaussian primitive (Coefficient,Exponent)
+    | D  [(Double,Double)]         -- ^ A D  type Gaussian primitive (Coefficient,Exponent)
     deriving (Generic, Show)
 
 instance Serialize GaussShape
              
--- Basic elements living along the lines of a basis file
 data Element =   Atom  AtomLabel [GaussShape]  deriving (Generic, Show)
 
 instance Serialize Element
 
 -- ====================================== Main processing functions ================================
 
+-- | Parse the primitives (Exponent and Coefficients) for several atomic elements.
+-- The Basis are download from <https://bse.pnl.gov/ bse> as plain text.
 parseBasisFile :: FilePath -> IO [Element]
 parseBasisFile fname = parseFromFile parseBasis fname 
    
 parseBasis :: Parser [Element]
-parseBasis = undefined
+parseBasis = parseIntro *> basisHeader *> many1 parseOneBasis
 
-comment :: Parser ()
-comment = char '#' *> anyLine' *> endOfLine
-
+-- | Basis set start
 basisHeader :: Parser ()
 basisHeader = "BASIS \"ao basis\" PRINT" *> endOfLine
 
-parseLabel :: Parser ByteString
-parseLabel = takeWhile1 isAlpha_ascii
-parsePrimitiveBlock :: Parser GaussShape
-parsePrimitiveBlock = 
+-- | Skips the comments explaining the basis set
+parseIntro :: Parser ()
+parseIntro = many1 comment *> pure ()
 
-#Basis SET: (4s,1p) -> [2s,1p]
-H    S
-     18.7311370              0.03349460       
-      2.8253937              0.23472695       
-      0.6401217              0.81375733       
-H    S
-      0.1612778              1.0000000        
-H    P
-      1.1000000              1.0000000        
-#BASIS SET: (4s,1p) -> [2s,1p]
-He    S
-     38.4216340              0.0237660        
-      5.7780300              0.1546790        
-      1.2417740              0.4696300        
-He    S
-      0.2979640              1.0000000        
-He    P
-      1.1000000              1.0000000
+parseOneBasis :: Parser Element
+parseOneBasis = comment *> liftA funElement (many1 parsePrimitiveBlock)
+ where funElement :: [(AtomLabel, GaussShape)] -> Element
+       funElement xs =
+                 let l = fst . head $ xs
+                 in  Atom l (map snd xs)
+     
+parseLabel :: Parser B.ByteString
+parseLabel = takeWhile1 isAlpha_ascii
+
+-- | Primitive Exponents and coefficients for an atomic element
+parsePrimitiveBlock :: Parser (AtomLabel, GaussShape)
+parsePrimitiveBlock = do
+    atomName   <- parseLabel <* spaces
+    shape      <- parseLabel <* spaces
+    primitives <- many1 spaceDouble <* endOfLine
+    funShape atomName primitives shape 
+
+-- | Pack The GaussShape in triples if the S and P Share the exponents
+--   Otherwise makes pairs for coefficients and exponents
+funShape :: AtomLabel -> [Double] -> B.ByteString -> Parser (AtomLabel, GaussShape)
+funShape atomName primitives = return . (atomName, ) . fun 
+  where ps  = pairs primitives
+        ts  = triple primitives 
+        fun = \case
+           "SP" ->  SP ts
+           "S"  ->  S0 ps
+           "P"  ->  P  ps
+           "D"  ->  D  ps
+           
+comment :: Parser ()
+comment = char '#' *> anyLine' *> endOfLine
+
+triple ::  [Double] -> [(Double,Double,Double)]
+triple = map fun . chunksOf 3
+  where fun [x,y,z] = (x,y,z)
+  
+pairs :: [Double] -> [(Double,Double)]
+pairs = map fun . chunksOf 2
+  where fun [x,y] = (x,y)
+  
+  

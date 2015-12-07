@@ -53,6 +53,7 @@ Library
     , process
     , repa     == 3.4.*
     , repa-algorithms
+    , split
     , vector   == 0.10.* 
     , vector-algorithms
 
@@ -109,6 +110,7 @@ executable hsFock
     , process
     , repa            == 3.4.*
     , repa-algorithms == 3.4.*
+    , split
     , vector          == 0.10.*
     , vector-algorithms
 
