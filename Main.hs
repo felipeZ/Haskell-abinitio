@@ -50,15 +50,23 @@ hsFock = HSFOCK
                   ,multi = 1   &= help "Spin state" &= typ "SpinState"
                   ,outFile = "scf.out" &= help "Output file" &= typFile
                   }
-                  &= summary (progName ++ progAuthors) 
-                  &= help "The Hartree-Fock method implemented in Haskell"
 
 
 basisConfig = BasisConfig
-   { basisPath = def &= help "Path to the File that containts the basis set format as plain text"
+   { basisPath = def &= help "Path to the File that containts the basis set format as plain text" &= typFile
      }
-  
-  
+
+-- | 
+hsModes :: Mode (CmdArgs HSFOCK)
+hsModes = cmdArgsMode $ modes [hsFock, basisConfig]
+    &= verbosityArgs [explicit, name "Verbose", name "V"] []
+    &= versionArg [explicit, name "version", name "v", summary "The Hartree-Fock method implemented in Haskell"]
+    &= summary (progName ++ progAuthors) 
+    &= help "The Hartree-Fock method implemented in Haskell"
+    &= helpArg [explicit, name "help", name "h"]
+    &= program "HsFock"
+ 
+   
 -- =======================<>=================================================
 
 progName = printf "HaskellAbInitio v%s\n" currVersion
@@ -83,7 +91,7 @@ main :: IO ()
 main  = do
   args <- getArgs
   -- If the user did not specify any arguments, pretend as "--help" was given
-  opts <- (if null args then withArgs ["--help"] else id) (cmdArgs hsFock)
+  opts <- (if null args then withArgs ["--help"] else id) (cmdArgsRun hsModes)
   checkOpts opts
   cores  <- getNumCapabilities
   processors cores

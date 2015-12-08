@@ -5,11 +5,12 @@
 --  2013/05/05 (Spain, Mother's Day) We kindly appreciate our mothers efforts in bringing us so far...
 
 module Science.QuantumChemistry.ParsecTools.ParserBasis
-    (
-      Element(..)
-     ,GaussShape(..)
-     ,parseBasisFile
-    ) where
+    -- (
+    --   Element(..)
+    --  ,GaussShape(..)
+    --  ,parseBasisFile
+    -- )
+    where
 
 -- ====================> Standard Modules and third party <==============================    
 import Control.Applicative (liftA)
@@ -47,7 +48,8 @@ parseBasisFile :: FilePath -> IO [Element]
 parseBasisFile fname = parseFromFile parseBasis fname 
    
 parseBasis :: Parser [Element]
-parseBasis = parseIntro *> basisHeader *> many1 parseOneBasis
+parseBasis = parseIntro *>  skipWhile (not. isAlpha_ascii) *>
+             basisHeader *> many1 parseOneBasis
 
 -- | Basis set start
 basisHeader :: Parser ()
@@ -70,9 +72,9 @@ parseLabel = takeWhile1 isAlpha_ascii
 -- | Primitive Exponents and coefficients for an atomic element
 parsePrimitiveBlock :: Parser (AtomLabel, GaussShape)
 parsePrimitiveBlock = do
-    atomName   <- parseLabel <* spaces
-    shape      <- parseLabel <* spaces
-    primitives <- many1 spaceDouble <* endOfLine
+    [atomName,shape] <-  count 2 (parseLabel <* spaces)
+    primitives <- many1 spaceDouble
+    anyLine'
     funShape atomName primitives shape 
 
 -- | Pack The GaussShape in triples if the S and P Share the exponents
@@ -88,7 +90,7 @@ funShape atomName primitives = return . (atomName, ) . fun
            "D"  ->  D  ps
            
 comment :: Parser ()
-comment = char '#' *> anyLine' *> endOfLine
+comment = char '#' *> anyLine'
 
 triple ::  [Double] -> [(Double,Double,Double)]
 triple = map fun . chunksOf 3

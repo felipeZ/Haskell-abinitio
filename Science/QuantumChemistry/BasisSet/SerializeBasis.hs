@@ -8,6 +8,7 @@ import Control.Monad ((>=>), zipWithM_)
 import qualified Data.ByteString as B
 import Data.Serialize
 import System.Directory (getDirectoryContents)
+import System.FilePath.Posix ((</>))
 
 -- =================> Internal Modules <======================
 import Science.QuantumChemistry.ParsecTools.ParserBasis (parseBasisFile)
@@ -19,7 +20,8 @@ import Science.QuantumChemistry.ParsecTools.ParserBasis (parseBasisFile)
 serializeBasisFile :: FilePath -> IO ()
 serializeBasisFile path = do 
    names <- getDirectoryContents path
-   let properNames = filter (`notElem` [".", ".."]) names
+   let properNames = map (path </>) . filter (`notElem` [".", ".."]) $ names
        basisName   = map ((++ ".basis") . takeWhile (not . (== '.')) ) properNames
+   print properNames
    basis <- mapConcurrently ( parseBasisFile >=> (return . encode )) properNames 
    zipWithM_ B.writeFile basisName basis 

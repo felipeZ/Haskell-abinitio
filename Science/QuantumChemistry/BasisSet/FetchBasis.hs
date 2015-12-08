@@ -4,7 +4,7 @@ module Science.QuantumChemistry.BasisSet.FetchBasis where
 
 -- ==================> Standard and third party libraries <=================
 import Control.Monad (unless, when)
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B
 import Data.Char (toLower)
 import qualified Data.Map.Strict  as M
 import Data.Maybe (fromMaybe)
@@ -37,7 +37,7 @@ createBasisMap xs basis =   do
 
 
 createElemMap ::[ Element] -> M.Map String Element
-createElemMap = foldr (\e@(Atom label _) acc -> M.insert label e acc) M.empty
+createElemMap = foldr (\e@(Atom label _) acc -> M.insert (B.unpack label) e acc) M.empty
 
 -- | Using The Coefficients and Exponents create a basis Set, represented as a list
 -- | of contracted Gauss functions
