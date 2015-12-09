@@ -7,7 +7,7 @@ import Control.Applicative
 import Control.Exception (throwIO)
 -- import Data.Attoparsec.ByteString
 import Data.Attoparsec.ByteString.Char8
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B
 
 
 -- ====================> Internal Modules <=======================
@@ -22,7 +22,8 @@ parseFromFile p file = do
       Left  msg  -> throwIO ParseError
       Right rs   -> return rs 
 
-
+skipTill :: B.ByteString -> Parser ()
+skipTill pattern = skipWhile (/= head (B.unpack pattern)) *> ( (string pattern *> pure () )  <|> (anyChar *> skipTill pattern))
 
 anyLine :: Parser B.ByteString
 anyLine = takeTill  (== '\n')
@@ -42,3 +43,5 @@ spaceAscii =  spaces *> takeWhile1 isAlpha_ascii
 
 spaces :: Parser ()
 spaces = skipWhile isSpace
+
+

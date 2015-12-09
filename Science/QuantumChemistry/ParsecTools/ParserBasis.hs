@@ -48,16 +48,12 @@ parseBasisFile :: FilePath -> IO [Element]
 parseBasisFile fname = parseFromFile parseBasis fname 
    
 parseBasis :: Parser [Element]
-parseBasis = parseIntro *>  skipWhile (not. isAlpha_ascii) *>
-             basisHeader *> many1 parseOneBasis
-
--- | Basis set start
-basisHeader :: Parser ()
-basisHeader = "BASIS \"ao basis\" PRINT" *> endOfLine
+parseBasis = parseIntro *> many1 parseOneBasis
 
 -- | Skips the comments explaining the basis set
+--   Till the basis set starts
 parseIntro :: Parser ()
-parseIntro = many1 comment *> pure ()
+parseIntro = skipTill "BASIS \"ao basis\" PRINT" *> endOfLine
 
 parseOneBasis :: Parser Element
 parseOneBasis = comment *> liftA funElement (many1 parsePrimitiveBlock)
