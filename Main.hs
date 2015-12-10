@@ -40,7 +40,6 @@ import Science.QuantumChemistry.Integrals.IntegralsEvaluation  (hcore)
 import Science.QuantumChemistry.NumericalTools.TableBoys   (generateGridBoys)
 -- ============================================================
 
-
 hsFock = HSFOCK
                   {scf   = def &= help "Solves The HF equation using the Self Consistent Field (SCF) Method" 
                   ,basis = def &= help "Uses basis set, for instance: 6-31G*" &= typ

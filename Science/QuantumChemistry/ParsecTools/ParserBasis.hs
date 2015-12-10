@@ -5,12 +5,11 @@
 --  2013/05/05 (Spain, Mother's Day) We kindly appreciate our mothers efforts in bringing us so far...
 
 module Science.QuantumChemistry.ParsecTools.ParserBasis
-    -- (
-    --   Element(..)
-    --  ,GaussShape(..)
-    --  ,parseBasisFile
-    -- )
-    where
+    (
+      Element(..)
+     ,GaussShape(..)
+     ,parseBasisFile
+    ) where
 
 -- ====================> Standard Modules and third party <==============================    
 import Control.Applicative (liftA)
