@@ -4,6 +4,7 @@
 module Science.QuantumChemistry.ParsecTools.ParseXYZ where
 
 -- ====================> Standard Modules and third party <==============================
+import Control.Applicative ((<|>))
 import Data.Attoparsec.ByteString.Char8
 import Data.ByteString.Char8 (unpack)
 import Text.Printf
@@ -26,11 +27,12 @@ parseFileXYZ file logger = parseFromFile parserXYZ file
 -- | 
 parserXYZ :: Parser [Atom]
 parserXYZ = do
-   n <- spaces *> decimal  
+   n <- spaces *> decimal
+   count 2 anyLine'
    count n parseAtomXYZ
      where  parseAtomXYZ = do
               l  <- spaceAscii
               xs <- count 3 spaceDouble
-              spaces *> endOfLine
+              endOfLine <|> endOfInput
               return (unpack l,xs)
 

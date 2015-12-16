@@ -7,7 +7,7 @@
 
 module Main where
 
--- =============================> Standard and third party libraries <===============================
+-- ===================> Standard and third party libraries <===================
 import Control.Monad (when)
 import Control.Concurrent (getNumCapabilities)
 import System.Console.CmdArgs
@@ -20,6 +20,7 @@ import Text.Printf
 import Data.Version (showVersion)
 import Distribution.Version
 import Paths_HartreeFock as HsApp
+
 
 -- =================> Internal Modules <======================
 import Science.QuantumChemistry.BasisSet.SerializeBasis    -- process a plain text basis set to binary
@@ -66,7 +67,7 @@ hsModes = cmdArgsMode $ modes [hsFock, basisConfig]
     &= program "HsFock"
  
    
--- =======================<>=================================================
+-- ==========================<>=============================
 
 progName = printf "HaskellAbInitio v%s\n" currVersion
     where
@@ -95,6 +96,7 @@ main  = do
   cores  <- getNumCapabilities
   processors cores
   doSomething opts
+  
 
 doSomething :: HSFOCK -> IO ()
 doSomething opts@HSFOCK{..}      = doSCF opts
