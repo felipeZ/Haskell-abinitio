@@ -14,7 +14,8 @@ import qualified Data.ByteString.Char8 as B
 import Science.QuantumChemistry.Error (HSFOCKException(..))
 
 -- ======================================================================
--- | 
+
+-- | Similar to the Parsec utility
 parseFromFile :: Parser a -> FilePath -> IO a
 parseFromFile p file = do
  xs <- B.readFile file
@@ -22,11 +23,12 @@ parseFromFile p file = do
       Left  msg  -> throwIO ParseError
       Right rs   -> return rs 
 
+-- | Skip the content till the pattern is found
 skipTill :: B.ByteString -> Parser ()
 skipTill pattern = skipWhile (/= head (B.unpack pattern)) *> ( (string pattern *> pure () )  <|> (anyChar *> skipTill pattern))
 
 anyLine :: Parser B.ByteString
-anyLine = takeTill  (== '\n')
+anyLine = takeTill (== '\n')
  
 anyLine' :: Parser ()
 anyLine' = skipWhile (/= '\n') *> endOfLine 

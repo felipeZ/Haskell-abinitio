@@ -87,12 +87,32 @@ funShape atomName primitives = return . (atomName, ) . fun
 comment :: Parser ()
 comment = char '#' *> anyLine'
 
+-- | For convention primitives are stored as (Coefficient, Exponent). 
+-- #BASIS SET: (10s,4p,1d) -> [3s,2p,1d]
+-- C    S
+--    3047.5249000              0.0018347        
+--     457.3695100              0.0140373        
+--     103.9486900              0.0688426        
+--      29.2101550              0.2321844        
+--       9.2866630              0.4679413        
+--       3.1639270              0.3623120        
+-- C    SP
+--       7.8682724             -0.1193324              0.0689991        
+--       1.8812885             -0.1608542              0.3164240        
+--       0.5442493              1.1434564              0.7443083        
+-- C    SP
+--       0.1687144              1.0000000              1.0000000        
+-- C    D
+--       0.8000000              1.0000000        
+--
+-- We operate with primitives using the (Coefficient, Exponent) representation
 triple ::  [Double] -> [(Double,Double,Double)]
 triple = map fun . chunksOf 3
-  where fun [x,y,z] = (x,y,z)
-  
+  where fun [e,c1,c2] = (c1,c2,1)
+
+-- |         
 pairs :: [Double] -> [(Double,Double)]
 pairs = map fun . chunksOf 2
-  where fun [x,y] = (x,y)
+  where fun [e,c] = (c,e)
   
   

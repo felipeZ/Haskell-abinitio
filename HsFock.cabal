@@ -62,6 +62,7 @@ Library
         DeriveDataTypeable
 
   exposed-modules:
+        Paths_HartreeFock
         Science.QuantumChemistry.BasisSet
         Science.QuantumChemistry.ConcurrencyTools
         Science.QuantumChemistry.HartreeFock

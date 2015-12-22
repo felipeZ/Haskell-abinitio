@@ -74,7 +74,6 @@ defaultPathBasis = do
   return (hsFockPath </> "data/basis")
 
      
-     
 -- | Because Symbols like '+*' are not allowed as part of names, the basis set containing
 -- | these symbols are stored in files where `+` is replace by `m` and `*` by `s`.
 -- | For example the basis 6-31+G** is stored in the file `6-31mGss.basis`
