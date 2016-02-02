@@ -134,6 +134,7 @@ harrisFunctional !fcore !xmatrix !integrals !occupied = do
   return flattenChargeDensity
 {-# INLINE harrisFunctional #-}
   
+
 computeGuessIntegrals :: Monad m =>  Integrals -> OccupiedShells -> Int -> m (Array U DIM1 Double)
 computeGuessIntegrals  !integrals !occupied !dim = 
   computeUnboxedP $ fromFunction (Z:.dim) $
@@ -145,7 +146,8 @@ computeGuessIntegrals  !integrals !occupied !dim =
                                  exchange = integrals ! (Z:.flat2)
                              in coulomb - 0.5* exchange
 
-  where calcIndex = fourIndex2Flat occupied . sortKeys                                   
+  where calcIndex = fourIndex2Flat occupied . sortKeys                          
+                    
 
  -- ============================================> TWO ELECTRON INTEGRALS <===========================================
 {-
@@ -156,34 +158,17 @@ computeGuessIntegrals  !integrals !occupied !dim =
    Then, there are only evaluated those integrals which indexes of the basis set, are the smallest one.
    Besides, it is provided a function for sorting the keys using the symmetry properties of the Integrals.-}
 
-sortKeys :: [Int] -> [Int]
-sortKeys [i,j,k,l] = let l1 = L.sort [i,j]
-                         l2 = L.sort [k,l]
-                     in if l1 <= l2 then l1 L.++ l2 else l2 L.++ l1
-                                              
 -- | Compute the electronic integrals                                 
 calcIntegrals :: ML.Map Boys Double ->  [AtomData] -> Array U DIM1 Double
-calcIntegrals gridBoys atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval cartProd 
+calcIntegrals gridBoys atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval indexes
 
-  where dim      = pred . sum . fmap (length . getBasis) $ atoms
-        funEval  = evalIntbykey gridBoys atoms 
-        cartProd = do
-          i <- [0..dim]
-          j <- [i..dim]
-          k <- [i..dim]
-          l <- [k..dim]
-          let xs = [i,j,k,l]
-          guard (condition xs)
-          return [i,j,k,l]
-        condition e = case compare e $ sortKeys e of
-                       EQ        -> True
-                       otherwise -> False                               
-
--- | <ii||kl> == <ij||kk> = 0
--- zeroCondition :: [Int] -> Bool
--- zeroCondition [i,j,k,l] | i == j && k /= i && k /= l && l /= i = True
---                         | k == l && i /= j && i /= k && j /= k = True
---                         | otherwise = False  
+  where dim       = pred . sum . fmap (length . getBasis) $ atoms
+        funEval   = evalIntbykey gridBoys atoms
+        -- Total number of integers that are unique. The rest of them
+        -- can be found by symmetry  <ij|kl> = <ji|kl> = <kl|ij>...
+        totalInts = (dim^4 + dim^3) `div` 2
+        shape     = ix4 dim dim dim dim
+        indexes   = [sh4DtoList (fromIndex4centers shape i) | i <- [0..(totalInts - 1)]
 
 -- ============> Density Matrix <=================
 
