@@ -1,7 +1,7 @@
 {-# Language DeriveFunctor, DeriveDataTypeable #-}
 
 -- The HaskellFock SCF Project
--- @2012-2015 Felipe Zapata, Angel Alvarez
+-- @2012-2016 Felipe Zapata, Angel Alvarez
 -- shared types
 
 module Science.QuantumChemistry.GlobalTypes where

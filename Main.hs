@@ -1,8 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, RecordWildCards #-}
 
 -- A system shell for the HaskellFock SCF Project 
--- @2012-2015 Angel Alvarez Adhesive tape
--- @2012-2015 Felipe Zapata core SCF machinery 
+-- @2012-2016 Felipe Zapata core SCF machinery 
 
 
 module Main where
@@ -74,7 +73,7 @@ progName = printf "HaskellAbInitio v%s\n" currVersion
         currVersion :: String
         currVersion = showVersion HsApp.version
 
-progAuthors = "@2015 Felipe Zapata, Angel Alvarez, Alessio Valentini"
+progAuthors = "@2012-2016 Felipe Zapata, Angel Alvarez, Alessio Valentini"
 
 -- | Keep calm and curry on
 processors :: Int -> IO ()
@@ -90,7 +89,7 @@ processors c =
 main :: IO ()
 main  = do
   args <- getArgs
-  -- If the user did not specify any arguments, pretend as "--help" was given
+  -- If the user did not specify any arguments, pretend as if "--help" was given
   opts <- (if null args then withArgs ["--help"] else id) (cmdArgsRun hsModes)
   checkOpts opts
   cores  <- getNumCapabilities
@@ -102,42 +101,42 @@ doSomething :: HSFOCK -> IO ()
 doSomething opts@HSFOCK{..}      = doSCF opts
 doSomething opts@BasisConfig{..} = doBasisConfig opts
 
-doSCF :: HSFOCK -> IO ()
-doSCF hs@HSFOCK{..} = do
-  putStrLn "Starting main SCF calculations, please wait...."
-  logger      <- initLogger outFile
-  atoms       <- initializeAtoms hs (logMessage logger)
-  hartreeData <- scfHF atoms charge (logMessage logger)
-  logMessage logger "Hartree-Fock has succeeded !!!\n"
-  logStop logger
+-- doSCF :: HSFOCK -> IO ()
+-- doSCF hs@HSFOCK{..} = do
+--   putStrLn "Starting main SCF calculations, please wait...."
+--   logger      <- initLogger outFile
+--   atoms       <- initializeAtoms hs (logMessage logger)
+--   hartreeData <- scfHF atoms charge (logMessage logger)
+--   logMessage logger "Hartree-Fock has succeeded !!!\n"
+--   logStop logger
                                    
 
 doBasisConfig :: HSFOCK -> IO ()
 doBasisConfig opts@BasisConfig{..} = serializeBasisFile basisPath
 
 
--- doSCF :: HSFOCK -> IO ()
--- doSCF _ = do
---     logger <- initLogger "water_sto_3g.out"
---     let projectdata = project "water" "STO-3G"
---     -- logger <- initLogger "water_6_31G*.out"
---     -- let projectdata = project "water" "6-31G*"
---         charge = 0
---         atom1 = AtomData r1 baseO 8.0
---         atom2 = AtomData r2 baseH 1.0
---         atom3 = AtomData r3 baseH 1.0
---         [r1, r2, r3] = atomList projectdata
---         [baseH,baseO] = pBasis projectdata
---         -- gridBoys   = generateGridBoys 0.1 -- ^gridBoys dx, where mMax is the maximum order of the boys function and dx the grid delta
---     logMessage logger "Starting main SCF calculations, please wait....\n"
---     logMessage logger "Core Matrix: "
---     -- core <- hcore gridBoys [atom1,atom2,atom3]
---     -- mtxS <- mtxOverlap  [atom1,atom2,atom3]
---     -- logMessage logger $ show core
---     hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
---     logMessage logger "Hartree-Fock has succeeded !!!\n"
---     logMessage logger "HF\n"
---     logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
+doSCF :: HSFOCK -> IO ()
+doSCF _ = do
+    logger <- initLogger "water_sto_3g.out"
+    let projectdata = project "water" "STO-3G"
+    -- logger <- initLogger "water_6_31G*.out"
+    -- let projectdata = project "water" "6-31G*"
+        charge = 0
+        atom1 = AtomData r1 baseO 8.0
+        atom2 = AtomData r2 baseH 1.0
+        atom3 = AtomData r3 baseH 1.0
+        [r1, r2, r3] = atomList projectdata
+        [baseH,baseO] = pBasis projectdata
+        -- gridBoys   = generateGridBoys 0.1 -- ^gridBoys dx, where mMax is the maximum order of the boys function and dx the grid delta
+    logMessage logger "Starting main SCF calculations, please wait....\n"
+    logMessage logger "Core Matrix: "
+    -- core <- hcore gridBoys [atom1,atom2,atom3]
+    -- mtxS <- mtxOverlap  [atom1,atom2,atom3]
+    -- logMessage logger $ show core
+    hartreeData <- scfHF [atom1,atom2,atom3] charge $ logMessage logger
+    logMessage logger "Hartree-Fock has succeeded !!!\n"
+    logMessage logger "HF\n"
+    logMessage logger $ printf "%.8f\n" $ getEnergy hartreeData
 --     logMessage logger "Calculating the gradient\n"
 --     -- gradient <- energyGradient [atom1,atom2,atom3] hartreeData
 --     -- logMessage logger $ show gradient
