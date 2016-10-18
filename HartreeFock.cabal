@@ -7,7 +7,7 @@ description:  Hartree-Fock Self Consistent Field method is the foundation of mod
 category:     computational chemistry
 author:       felipe zapata, angel alvarez, alessio valentini
 maintainer:   tifonzafel@gmail.com
-homepage:     http://www2.uah.es/resmol
+copyright:    2016 Author name here
 license:      BSD3
 license-file: LICENSE
 build-type:   Simple
@@ -32,7 +32,7 @@ Library
   build-depends:
       async
     , attoparsec
-    , base   == 4.8.*        
+    , base  >= 4.7 && < 5        
     , bytestring
     , Cabal
     , cereal          
@@ -51,10 +51,10 @@ Library
     , parsec
     , primitive
     , process
-    , repa     == 3.4.*
+    , repa
     , repa-algorithms
     , split
-    , vector   == 0.10.* 
+    , vector
     , vector-algorithms
 
   other-extensions:
@@ -90,7 +90,7 @@ executable hsFock
   build-depends:
       async 
     , attoparsec
-    , base == 4.8.*
+    , base >= 4.7 && < 5
     , bytestring
     , Cabal
     , cereal               
@@ -109,10 +109,10 @@ executable hsFock
     , parsec
     , primitive
     , process
-    , repa            == 3.4.*
-    , repa-algorithms == 3.4.*
+    , repa
+    , repa-algorithms
     , split
-    , vector          == 0.10.*
+    , vector
     , vector-algorithms
 
   other-modules:
@@ -124,9 +124,11 @@ executable hsFock
          Science.QuantumChemistry.NumericalTools
          Science.QuantumChemistry.ParsecTools
 
-         
-
   default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/felipeZ/Haskell-abinitio
 
 -- executable ProfileHS
 --   Main-is: HsFock.hs
