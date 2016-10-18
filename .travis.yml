@@ -13,7 +13,10 @@ cache:
 addons:
   apt:
     packages:
+      - libatlas-base-dev
       - libgmp-dev
+      - libgsl0-dev
+      - liblapack-dev
 
 before_install:
 # Download and unpack the stack executable
