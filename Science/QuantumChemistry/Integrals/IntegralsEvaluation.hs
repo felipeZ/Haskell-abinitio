@@ -126,7 +126,7 @@ getExponentDerivatives (Dij_Ax x,Dij_Ay y, Dij_Az z) = x + y + z
 
 -- ===============> OPERATORS <===========
  
- -- | Overlap integral over primitive guassians
+-- | Overlap integral over primitive guassians
 (<||>) :: Gauss -> Gauss -> Double
 gauss1 <||> gauss2 = sab gauss1 gauss2
 

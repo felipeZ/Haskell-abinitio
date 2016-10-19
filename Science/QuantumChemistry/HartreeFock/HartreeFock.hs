@@ -1,7 +1,7 @@
 {-# Language FlexibleContexts,BangPatterns #-}
 
 -- The HaskellFock SCF Project 
--- @2013 Felipe Zapata, Angel Alvarez
+-- @2016 Felipe Zapata, Angel Alvarez
 -- Hartree-Fock Method
 -- The initial starting point for most method is the Hartree-Fock approximation,
 -- which established that the ground-state wavefunction   is determined by 
@@ -78,7 +78,9 @@ scfHF atoms charge logger = do
             occupied   = floor . (/2) . subtract charge . sum 
                                 $ fmap getZnumber atoms
             dataDIIS   = DataDIIS S.empty S.empty 5
-            gridBoys   = generateGridBoys 0.1 -- ^gridBoys dx, where mMax is the maximum order of the boys function and dx the grid delta
+            -- gridBoys dx, where mMax is the maximum order of the boys
+            -- function and dx the grid delta
+            gridBoys   = generateGridBoys 0.1 
             integrals  = calcIntegrals gridBoys atoms
         core      <- hcore gridBoys atoms
         s         <- mtxOverlap atoms

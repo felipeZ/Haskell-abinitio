@@ -31,7 +31,8 @@ import Science.QuantumChemistry.NumericalTools.PointsWeights
 import Science.QuantumChemistry.NumericalTools.Boys (asymptBoysF,boysF) 
 
 -- Data Types
-data Boys = Boys Double Double deriving (Eq,Ord) -- ^represents the function f(m,x)
+{- | represents the function f(m,x) -}
+data Boys = Boys Double Double deriving (Eq,Ord)
 
 
 {- |
