@@ -1,7 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable, RecordWildCards #-}
 
--- A system shell for the HaskellFock SCF Project 
--- @2012-2016 Felipe Zapata core SCF machinery 
+{-|
+Module: Main
+Description: Initialization of the simulation
+Copyright: @2013 Felipe Zapata, Angel Alvarez
+           @2016 Felipe Zapata
+The HaskellFock SCF Project
+A system shell for the HaskellFock SCF Project 
+-}
 
 
 module Main where
@@ -40,22 +46,29 @@ import Science.QuantumChemistry.Integrals.IntegralsEvaluation  (hcore)
 import Science.QuantumChemistry.NumericalTools.TableBoys   (generateGridBoys)
 -- ============================================================
 
+-- | Options for the mode to execute simulation
 hsFock = HSFOCK
                   {scf   = def &= help "Solves The HF equation using the Self Consistent Field (SCF) Method" 
-                  ,basis = def &= help "Uses basis set, for instance: 6-31G*" &= typ
-"BASIS"
+                  ,basis = def &= help "Uses basis set, for instance: 6-31G*" &= typ "BASIS"
                   ,xyz   = def &= help "Use the Cartesian coordinates of the file" &= typFile
                   ,charge= 0   &= help "Molecular charge" &= typ "TotalCharge"
                   ,multi = 1   &= help "Spin state" &= typ "SpinState"
+                  ,ndiis = 5   &= help "Number of previuos step to store for DIIS" &= typ "Int"
                   ,outFile = "scf.out" &= help "Output file" &= typFile
                   }
 
-
+-- | Options for the mode configuring the basis set
 basisConfig = BasisConfig
    { basisPath = def &= help "Path to the File that containts the basis set format as plain text" &= typFile
      }
 
--- | 
+{-| There are currently two modes of execute HSFOCK. the first want does a Self-consistent filed to compute
+the energy of a molecule. it takes as argument the name of the basis set to use, the path to the molecular
+geometry in xyz and an optional output name.
+
+The second mode of operation transform the basis set written in plain text to binary representation for
+fast retrieval. This step should only be run once during the configuration of the library.
+-}
 hsModes :: Mode (CmdArgs HSFOCK)
 hsModes = cmdArgsMode $ modes [hsFock, basisConfig]
     &= verbosityArgs [explicit, name "Verbose", name "V"] []
@@ -75,7 +88,7 @@ progName = printf "HaskellAbInitio v%s\n" currVersion
 
 progAuthors = "@2012-2016 Felipe Zapata, Angel Alvarez, Alessio Valentini"
 
--- | Keep calm and curry on
+-- | Check number of processors
 processors :: Int -> IO ()
 processors c = 
     printf "%s processor %s detected.\n" (show c) (core2string c)
@@ -94,12 +107,12 @@ main  = do
   checkOpts opts
   cores  <- getNumCapabilities
   processors cores
-  doSomething opts
+  executeMode opts
   
-
-doSomething :: HSFOCK -> IO ()
-doSomething opts@HSFOCK{..}      = doSCF opts
-doSomething opts@BasisConfig{..} = doBasisConfig opts
+-- | Execute one of the execution modes
+executeMode :: HSFOCK -> IO ()
+executeMode opts@HSFOCK{..}      = doSCF opts
+executeMode opts@BasisConfig{..} = doBasisConfig opts
 
 -- doSCF :: HSFOCK -> IO ()
 -- doSCF hs@HSFOCK{..} = do
@@ -114,7 +127,7 @@ doSomething opts@BasisConfig{..} = doBasisConfig opts
 doBasisConfig :: HSFOCK -> IO ()
 doBasisConfig opts@BasisConfig{..} = serializeBasisFile basisPath
 
-
+-- | Run the actual SCF using the Hartree-Fock calculation
 doSCF :: HSFOCK -> IO ()
 doSCF _ = do
     logger <- initLogger "water_sto_3g.out"

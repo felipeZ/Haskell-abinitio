@@ -1,9 +1,14 @@
 {-# Language BangPatterns, ViewPatterns  #-}
 
--- The HaskellFock SCF Project
--- @2013 Felipe Zapata, Angel Alvarez
--- Analytical evaluation of the overlap, core, nuclei-electron
--- and electron-electron integrals
+{-|
+Module: Science.QuantumChemistry.Integrals.IntegralsEvaluation 
+Description: Analytical evaluation of the overlap, core, nuclei-electron
+             and electron-electron integrals.
+Command line checkers
+Copyright: @2013 Felipe Zapata, Angel Alvarez
+           @2016 Felipe Zapata
+The HaskellFock SCF Project
+-}
 
 
 module Science.QuantumChemistry.Integrals.IntegralsEvaluation 

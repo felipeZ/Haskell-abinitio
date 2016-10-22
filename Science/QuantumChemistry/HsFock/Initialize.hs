@@ -1,5 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 
+{-|
+Module: Science.QuantumChemistry.HsFock.Initialize
+Description: Initialize basis set for the atoms
+Copyright: @2013 Felipe Zapata, Angel Alvarez
+           @2016 Felipe Zapata
+-}
+
 module Science.QuantumChemistry.HsFock.Initialize where 
 
 -- =============================> Standard and third party libraries <=================

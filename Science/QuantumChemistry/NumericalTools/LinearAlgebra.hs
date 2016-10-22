@@ -1,8 +1,11 @@
 {-# LANGUAGE FlexibleContexts,BangPatterns #-}
 
--- The HaskellFock SCF Project
--- @2013 Felipe Zapata, Angel Alvarez
--- Linear Algebra General Utilities
+{-|
+Module: Science.QuantumChemistry.NumericalTools.LinearAlgebra ( 
+Description:  The HaskellFock SCF Project
+Copyright: @2013 Felipe Zapata, Angel Alvarez
+           @2016 Felipe Zapata
+-}
 
 module Science.QuantumChemistry.NumericalTools.LinearAlgebra ( 
        EigenValues

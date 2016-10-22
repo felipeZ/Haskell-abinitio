@@ -1,18 +1,23 @@
+
 {-# Language FlexibleContexts,BangPatterns #-}
 
--- The HaskellFock SCF Project 
--- @2016 Felipe Zapata, Angel Alvarez
--- Hartree-Fock Method
--- The initial starting point for most method is the Hartree-Fock approximation,
--- which established that the ground-state wavefunction   is determined by 
--- products of monoelectronic wavefunctions of the molecular orbitals. 
--- Within this approximation, the electronic field is determined by a self-consistent
--- field method, where every single electron is moving under the mean-potential 
--- created by the other electrons. The wavefunction is built from Slater determinants 
--- as an antisymmetrized product of spin orbitals 
+{-|
+Module: Science.QuantumChemistry.HartreeFock.HartreeFock
+Description: Hartree-Fock Method
+Copyright: @2016 Felipe Zapata
 
--- For a complete description, please refer to: 
--- Szabo, A. and N. S. Ostlund (1996). Modern Quantum Chemistry. Toronto, Canada, Dover Publications.
+The HaskellFock SCF Project 
+The initial starting point for most method is the Hartree-Fock approximation,
+which established that the ground-state wavefunction   is determined by 
+products of monoelectronic wavefunctions of the molecular orbitals. 
+Within this approximation, the electronic field is determined by a self-consistent
+field method, where every single electron is moving under the mean-potential 
+created by the other electrons. The wavefunction is built from Slater determinants 
+as an antisymmetrized product of spin orbitals 
+
+For a complete description, please refer to: 
+Szabo, A. and N. S. Ostlund (1996). Modern Quantum Chemistry. Toronto, Canada, Dover Publications.
+-}
 
 -- | Restricted Hartree-Fock Method
 module Science.QuantumChemistry.HartreeFock.HartreeFock (
@@ -61,22 +66,18 @@ import Science.QuantumChemistry.NumericalTools.TableBoys   (Boys,generateGridBoy
 
 -- ===============> MODULE HARTREE-FOCK <========================================
 
--- |The Matricial Elements are calculated in the IntegralsEvaluation with these elements are build unboxed vector wihch
---  are subsequently transformed to Repa Arrays
                   
---  ==================> LOCAL TYPES  <======================
-
-
-
 -- =====================================> SCF PROCEDURE <================================================
 
--- Initialize the required parameters to run the Hartree-Fock procedure
+-- | Initialize the required parameters to run the Hartree-Fock procedure
 scfHF ::  [AtomData] -> Charge -> (String -> IO ()) -> IO HFData
 scfHF atoms charge logger = do
+            -- internuclear electronic repulsion
         let repulsionN = nuclearRep atoms
-            zeros      = flattenZero $  sum . fmap (length . getBasis) $ atoms
+             -- Occupied Molecular Orbitals
             occupied   = floor . (/2) . subtract charge . sum 
                                 $ fmap getZnumber atoms
+            -- DIIS configuration
             dataDIIS   = DataDIIS S.empty S.empty 5
             -- gridBoys dx, where mMax is the maximum order of the boys
             -- function and dx the grid delta
@@ -135,7 +136,8 @@ harrisFunctional !fcore !xmatrix !integrals !occupied = do
   (_,flattenChargeDensity,_) <- diagonalHF fockGuess xmatrix occupied
   return flattenChargeDensity
 {-# INLINE harrisFunctional #-}
-  
+
+-- | The force center integral are calculated in this step and subsequently transformed to a Repa Array
 computeGuessIntegrals :: Monad m =>  Integrals -> OccupiedShells -> Int -> m (Array U DIM1 Double)
 computeGuessIntegrals  !integrals !occupied !dim = 
   computeUnboxedP $ fromFunction (Z:.dim) $
@@ -150,13 +152,6 @@ computeGuessIntegrals  !integrals !occupied !dim =
   where calcIndex = fourIndex2Flat occupied . sortKeys                                   
 
  -- ============================================> TWO ELECTRON INTEGRALS <===========================================
-{-
-  | the Idea behind the evaluation of the four centers integral it is to create a function which
-   sorts the indexes of the all possible ones, for the two electron integrals. This sorting
-   use the fact that if i,j,k,l are indexes for the four centers then the following
-   symmetry property applies : <ij|kl> = <ji|kl> = <kl|ij>...
-   Then, there are only evaluated those integrals which indexes of the basis set, are the smallest one.
-   Besides, it is provided a function for sorting the keys using the symmetry properties of the Integrals.-}
 
 sortKeys :: [Int] -> [Int]
 sortKeys [i,j,k,l] = let l1 = L.sort [i,j]
@@ -164,6 +159,13 @@ sortKeys [i,j,k,l] = let l1 = L.sort [i,j]
                      in if l1 <= l2 then l1 L.++ l2 else l2 L.++ l1
                                               
 -- | Compute the electronic integrals                                 
+{-| the Idea behind the evaluation of the four centers integral it is to create a function which
+ sorts the indexes of the all possible ones, for the two electron integrals. This sorting
+ use the fact that if i,j,k,l are indexes for the four centers then the following
+ symmetry property applies : <ij|kl> = <ji|kl> = <kl|ij>...
+ Then, there are only evaluated those integrals which indexes of the basis set, are the smallest one.
+ Besides, it is provided a function for sorting the keys using the symmetry properties of the Integrals.
+-}
 calcIntegrals :: ML.Map Boys Double ->  [AtomData] -> Array U DIM1 Double
 calcIntegrals gridBoys atoms = fromListUnboxed (ix1 $ length cartProd) $ parMap rdeepseq funEval cartProd 
 
@@ -209,8 +211,8 @@ calcDensity !arr occupied =
 {-# INLINE calcDensity #-}
                   
 -- ==================================> CALCULATED THE FOCK MATRIX <======================================          
--- | Calculate the current fock matrix as a flatten matrix summing the core Hamiltonian plus the electronic
---   interaction integrals
+{-| Calculate the current fock matrix as a flatten matrix summing the core Hamiltonian plus the electronic
+ interaction integrals-}
 fock :: Monad m
         => [AtomData]
         -> FlattenCore

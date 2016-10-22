@@ -1,8 +1,15 @@
 {-# Language DeriveFunctor, DeriveDataTypeable #-}
 
--- The HaskellFock SCF Project
--- @2012-2016 Felipe Zapata, Angel Alvarez
--- shared types
+{-|
+Module: Science.QuantumChemistry.GlobalTypes
+Description: shared types
+Copyright: @2013 Felipe Zapata, Angel Alvarez
+           @2016 Felipe Zapata
+
+Data types, instances and type manipulation in general.
+-}
+
+
 
 module Science.QuantumChemistry.GlobalTypes where
 
@@ -20,8 +27,8 @@ import Data.Typeable
 import qualified Data.Vector.Unboxed as VU
 
 --  =========================> TYPES <=====================
-               
---  | Basis set
+
+-- | Basis set
 type Basis = [CGF]
 
 -- | charge of the system
@@ -109,7 +116,7 @@ data Gauss = Gauss {
 data Funtype = Zero| S | Px | Py | Pz | Dxx | Dxy | Dxz | Dyy | Dyz | Dzz  | Fxxx | Fxxy | Fxxz |
                Fxyz | Fxyy | Fxzz | Fyyy | Fyyz | Fyzz | Fzzz
                deriving (Show,Eq,Enum,Ord)
-               
+
 
 -- |Hartree-Fock Results
 data HFData = HFData {
@@ -125,7 +132,7 @@ data EigenData = EigenData {
              eigenvals :: !EigenValues
            , eigenvec :: !EigenVectors } deriving (Show)
 
-           
+
 data Tree a = EmptyTree | Node a (Tree a) (Tree a) deriving (Show)
 
 data Choice a = Ignore | Take a  deriving (Show,Functor)
@@ -135,17 +142,18 @@ data Switch = ON | OFF
 
 -- | Command Line parsing Data types
 data HSFOCK =
-            HSFOCK {scf       :: Bool
-                   ,basis     :: String
-                   ,charge    :: Double
-                   ,multi     :: Int                     
-                   ,xyz       :: FilePath
-                   ,outFile   :: FilePath
+            HSFOCK {scf       :: Bool     -- ^ Run an SCF calculation
+                   ,basis     :: String   -- ^ Name of the basis set
+                   ,charge    :: Double   -- ^ total charge
+                   ,multi     :: Int      -- ^ Multiplicity (singlet, doblet, etc.)
+                   ,ndiis     :: Int      -- ^ Number of previous states stored to be used by the DIIS method. 
+                   ,xyz       :: FilePath -- ^ Path to molecular geometry
+                   ,outFile   :: FilePath -- ^ Output file.
                    -- ,inputFile :: FilePath
                    }
             |
             BasisConfig {
-                        basisPath  :: FilePath
+                        basisPath  :: FilePath -- ^ Path to the folder containing the plain text basis
                         } deriving (Show, Data, Typeable)
 
 
@@ -155,11 +163,11 @@ newtype Recursive a = Recursive {runRecursive :: a -> a}
 
 
  -- =================> INSTANCES <===================
-                      
+
 instance Bounded Funtype where
   minBound = S
   maxBound = Fzzz
- 
+
 instance Functor Tree where
   fmap f EmptyTree = EmptyTree
   fmap f (Node x l r) = Node (f x) (fmap f l) (fmap f r)
@@ -182,8 +190,8 @@ instance Num a => Monoid (Recursive a) where
                     in Recursive $ f . g
 
   mconcat xs =  Recursive $ DF.foldr1 (.) $ fmap runRecursive xs
-  
-  
+
+
 instance Monoid a => Monoid (Choice a) where
   mempty = Ignore
   Ignore `mappend` Ignore = Ignore
@@ -197,27 +205,27 @@ instance NFData a => NFData (Choice a) where
 
 -- instance NFData a => NFData (Sum a) where
 --   rnf (Sum a) = rnf a 
-  
+
 -- ===================> <=====================  
 choices :: b -> (a -> b) -> Choice a -> b
 choices x0 f c =
   case c of
        Ignore -> x0
        Take x -> f x
-       
+
 -- ====================> Operators <=======================
 
 
 -- | Operator to increase the angular momentum
 (|+>) :: Funtype -> CartesianLabel ->  Funtype
 symb |+> label =  getAngMom newMomentum
-                  
+
   where [x,y,z] = getAxesMom symb
         newMomentum = case label of
                            Ax -> [succ x,y,z]
                            Ay -> [x,succ y,z]
                            Az -> [x,y,succ z]
-  
+
 
 -- | Operator to decrease the angular momentum
 (|->) :: Funtype -> CartesianLabel ->  Funtype
@@ -236,19 +244,19 @@ getCGFangularExpo symb ax =
           Ax -> x                            
           Ay -> y
           Az -> z       
-        
+
 toCartLabel :: Int -> CartesianLabel
 toCartLabel k | k == 0 = Ax
               | k == 1 = Ay
               | k == 2 = Az
               | otherwise = error "Unexpected Integer <= toCartLabel"
-                  
+
 fromCartLabel :: CartesianLabel -> Int
 fromCartLabel k | k == Ax = 0
                 | k == Ay = 1
                 | k == Az = 2
 
-              
+
 -- ===========> Auxiliar Functions <======
 
 -- | Map from Unary Angular momenta representation to its corresponding integer
@@ -274,22 +282,23 @@ mapLAngular = M.fromList
             ,((Fyyz,0),0),((Fyyz,1),2),((Fyyz,2),1)
             ,((Fyzz,0),0),((Fyzz,2),1),((Fyzz,2),2)
             ,((Fzzz,0),0),((Fzzz,2),0),((Fzzz,2),3)]
-            
 
--- | Map from the Integrals representing the exponents of
---   the gaussian functions (total angular momentum ) to 
---   the unary data representation
+
+{-| Map from the Integrals representing the exponents of
+the gaussian functions (total angular momentum ) to 
+the unary data representation
+-}
 mapAngMomentum :: M.Map [Int] Funtype
 mapAngMomentum = M.fromList 
-              [([0,0,0],S)
-              ,([1,0,0],Px),([0,1,0],Py),([0,0,1],Pz)
-              ,([2,0,0],Dxx),([1,0,1],Dxz),([1,1,0],Dxy),([0,2,0],Dyy),([0,1,1],Dyz),([0,0,2],Dzz)
-              ,([3,0,0],Fxxx),([2,1,0],Fxxy),([2,0,1],Fxxz),([1,1,1],Fxyz),([1,2,0],Fxyy),([1,0,2],Fxzz),([0,3,0],Fyyy),([0,2,1],Fyyz),([0,1,2],Fyzz),([0,0,3],Fzzz) ]
+               [([0,0,0],S)
+               ,([1,0,0],Px),([0,1,0],Py),([0,0,1],Pz)
+               ,([2,0,0],Dxx),([1,0,1],Dxz),([1,1,0],Dxy),([0,2,0],Dyy),([0,1,1],Dyz),([0,0,2],Dzz)
+               ,([3,0,0],Fxxx),([2,1,0],Fxxy),([2,0,1],Fxxz),([1,1,1],Fxyz),([1,2,0],Fxyy),([1,0,2],Fxzz),([0,3,0],Fyyy),([0,2,1],Fyyz),([0,1,2],Fyzz),([0,0,3],Fzzz) ] 
 
-              
--- | Map from the unary data representation to the 
---  Integrals representing the exponents of 
---   the cartesian gaussian functions (total angular momentum )
+
+{- | Map from the unary data representation to the 
+Integrals representing the exponents of 
+the cartesian gaussian functions (total angular momentum)-}
 mapAxesMomentum :: M.Map Funtype [Int]
 mapAxesMomentum = M.fromList 
               [(S  ,[0,0,0])
@@ -312,7 +321,6 @@ mapAxesMomentum = M.fromList
               ,(Fyyz,[0,2,1])
               ,(Fyzz,[0,1,2])
               ,(Fzzz,[0,0,3])]
-
 
 getAngMom :: [Int] -> Funtype
 getAngMom axis =

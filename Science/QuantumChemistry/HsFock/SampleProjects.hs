@@ -1,8 +1,11 @@
 
--- Haskell Fock SCF Project
--- @2013 Felipe Zapata, Angel Alvarez
--- Sample Data to Felipe
-
+{-|
+Module: Science.QuantumChemistry.HsFock.SampleProjects
+Description: Sample Data to Felipe
+Copyright: @2013 Felipe Zapata, Angel Alvarez
+           @2016 Felipe Zapata
+The HaskellFock SCF Project
+-}
 
 module Science.QuantumChemistry.HsFock.SampleProjects where
 
