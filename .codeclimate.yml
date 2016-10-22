@@ -1,8 +1,3 @@
-index e69de29..2e97d7f 100644
---- a/.codeclimate.yml
-+++ b/.codeclimate.yml
-@@ -0,0 +1,8 @@
-+---
 engines:
  hlint:
     enabled: true
@@ -10,4 +5,3 @@ engines:
   ratings:
     paths:
       - "**.hs"
-+- test/
