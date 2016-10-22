@@ -3,7 +3,7 @@
 
 {-|
 Module: Science.QuantumChemistry.HartreeFock.HartreeFock
-Description: Hartree-Fock Method
+Description: Restricted Hartree-Fock Method
 Copyright: @2016 Felipe Zapata
 
 The HaskellFock SCF Project 
@@ -19,7 +19,6 @@ For a complete description, please refer to:
 Szabo, A. and N. S. Ostlund (1996). Modern Quantum Chemistry. Toronto, Canada, Dover Publications.
 -}
 
--- | Restricted Hartree-Fock Method
 module Science.QuantumChemistry.HartreeFock.HartreeFock (
       HFData(..)
      ,boysF
