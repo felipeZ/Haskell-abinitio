@@ -1,5 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
 
+{-|
+Module: Science.QuantumChemistry.NumericalTools.JacobiMethodST 
+Description: Jacobi method implemented the monad ST
+Copyright: @2016 Felipe Zapata
+-}
+
 module Science.QuantumChemistry.NumericalTools.JacobiMethodST (
                jacobiST
               ,maxElemIndex
@@ -16,8 +22,7 @@ import Data.Vector.Generic.Mutable (unsafeRead,unsafeWrite)
 import Data.Vector.Unboxed as U
 
 
--- ----------------------> Internal Modules <---------------
-
+-- =================> Internal Modules <======================
 import Science.QuantumChemistry.GlobalTypes (Matrix,VecUnbox)
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra (diagonal,identity)
 import Science.QuantumChemistry.NumericalTools.VectorTools (diagonalVec,sortEigenData)
@@ -123,7 +128,7 @@ calcParameters !maxElem !aDiff = Parameters s t tau
         s = t*c
         tau = s/(1 + c)
         
--- Return the index of the largest off-diagonal element in the array
+-- | Return the index of the largest off-diagonal element in the array
 maxElemIndex  :: PrimMonad m => 
                    MVector (PrimState m) Double ->
                    Int -> 

@@ -1,22 +1,22 @@
 
--- The HaskellFock SCF Project 
--- @2013 Angel Alvarez, Felipe Zapata
--- Boys function calculation and related routines aimed at acurate and efficien 
--- calculation of Gaussian Type Orbitals (GTO)
-
-
--- Boys function calculation to multielectron Integrals
--- For a review about this approach, please refer to: 
---                 Multi-electron Integrals
---                 Simen Reine,1 Trygve Helgaker1 and Roland Lindh2
---                 WIREs Comput Mol Sci 2012, 2: 290–303 doi: 10.1002/wcms.78
+{-|
+Module: Science.QuantumChemistry.NumericalTools.TableBoys
+Description: Boys function calculation and related routines aimed at acurate and efficient
+             calculation of Gaussian Type Orbitals (GTO)
+Copyright: @2013 Angel Alvarez, Felipe Zapata
+           @2016 Felipe Zapata
+ Boys function calculation to multielectron Integrals
+ For a review about this approach, please refer to: 
+  Multi-electron Integrals
+  Simen Reine,1 Trygve Helgaker1 and Roland Lindh2
+  WIREs Comput Mol Sci 2012, 2: 290–303 doi: 10.1002/wcms.78
+-}
 
 module Science.QuantumChemistry.NumericalTools.TableBoys (
                                                          Boys
                                                         ,boysTaylor
                                                         ,generateGridBoys
                                                          ) where
-
 
 -- =============================> Standard and third party libraries <===============================
 import Control.Exception (throw)
@@ -31,7 +31,7 @@ import Science.QuantumChemistry.NumericalTools.PointsWeights
 import Science.QuantumChemistry.NumericalTools.Boys (asymptBoysF,boysF) 
 
 -- Data Types
-{- | represents the function f(m,x) -}
+-- | represents the function f(m,x)
 data Boys = Boys Double Double deriving (Eq,Ord)
 
 

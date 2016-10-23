@@ -1,5 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{-|
+Module: Science.QuantumChemistry.ParsecTools.ParseXYZ
+Description: Read molecular geometries in XYZ format
+Copyright: @2016 Felipe Zapata
+-}
 
 module Science.QuantumChemistry.ParsecTools.ParseXYZ where
 
@@ -24,7 +29,7 @@ type Atom = (String,[Double])
 parseFileXYZ :: FilePath -> (String -> IO () ) -> IO [Atom]
 parseFileXYZ file logger = parseFromFile parserXYZ file
 
--- | 
+-- | Actual xyz parser
 parserXYZ :: Parser [Atom]
 parserXYZ = do
    n <- spaces *> decimal

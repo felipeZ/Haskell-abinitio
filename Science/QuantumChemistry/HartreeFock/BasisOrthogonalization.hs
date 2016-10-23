@@ -1,4 +1,11 @@
 
+{-|
+Module: Science.QuantumChemistry.HartreeFock.DIIS
+Description: DIIS acceleration Convergence
+Copyright: @2012,2013 Angel Alvarez Adhesive tape
+           @2012,2015 Felipe Zapata core SCF machinery 
+           @2016 Felipe Zapata
+-}
 module Science.QuantumChemistry.HartreeFock.BasisOrthogonalization  where
 
 import Data.Array.Repa as R
@@ -13,10 +20,9 @@ import Science.QuantumChemistry.NumericalTools.EigenValues (eigenSolve)
 
 
 
--- ========================> ORTHOGONALIZATION OF THE BASIS <======================================================
+-- ========================> ORTHOGONALIZATION OF THE BASIS <==================================
 
--- | Here is diagonalized the Overlap matrix and it is obtained a transformation matrix
---   S^-1/2
+-- | Here is diagonalized the Overlap matrix and it is obtained a transformation matrix  S^-1/2
 symmOrtho :: Monad m => Array U DIM2 Double -> m (Array U DIM2 Double)
 symmOrtho arr = do
   let (eigVal,eigVecs) = eigenSolve arr

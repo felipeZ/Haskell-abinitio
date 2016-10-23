@@ -1,6 +1,27 @@
+{-|
+Module: Science.QuantumChemistry.BasisSet.NormalizeBasis
+Description: Normalize the basis set using a global constant
+Copyright: @2016 Felipe Zapata
+
+The basis set is expanded in contracted gaussian function
+and the normalization.
+The norm of each contracted is given by the following equation
+N = sqrt $ ((2l -1)!! (2m-1)!! (2n-1)!!)/(4*expo)^(l+m+n)  *
+    (pi/(2*e))**1.5
+where expo is the exponential factor of the contracted
+
+let |fi> = sum ci* ni* x^lx * y^ly * z ^lz * exp(-ai * R^2)
+where ni is a normalization constant for each gaussian basis
+then <fi|fj>  = sum sum ci* cj * ni * nj * <Si|Sj>
+where N is the normalization constant
+then the global normalization constant is given by
+N = sqrt (1 / sum sum  ci* cj * ni * nj * <Si|Sj> )
+Therefore the contracted normalized gauss function is given by
+|Fi> = N * (sum ci* ni* x^lx * y^ly * z ^lz * exp(-ai * R^2))
+-}
 
 
-module Science.QuantumChemistry.BasisSet.NormalizeBasis ( normGlobal ) where 
+module Science.QuantumChemistry.BasisSet.NormalizeBasis ( normGlobal ) where
 
 
 -- ==================> Standard and third party libraries <=================

@@ -1,13 +1,23 @@
 {-# Language FlexibleContexts,BangPatterns,ViewPatterns #-}
 
 
--- The HaskellFock SCF Project 
--- @2013 Felipe Zapata, Angel Alvarez
--- DIIS acceleration Convergence
+{-|
+Module: Science.QuantumChemistry.HartreeFock.DIIS
+Description: DIIS acceleration Convergence
+Copyright: @2012,2013 Angel Alvarez Adhesive tape
+           @2012,2015 Felipe Zapata core SCF machinery 
+           @2016 Felipe Zapata
+For a complete description, please refer to: 
+Pulay, Péter (1980). "Convergence acceleration of iterative sequences. the case of SCF iteration". 
+Chemical Physics Letters 73 (2): 393–398.
 
--- For a complete description, please refer to: 
--- Pulay, Péter (1980). "Convergence acceleration of iterative sequences. the case of SCF iteration". 
--- Chemical Physics Letters 73 (2): 393–398.
+DIIS ALGORITHM
+(1) Construct the error vector according to eq. and transform it to orthogonal basis. Note that
+the density matrix in eq. (4) is the density used to construct the Fock matrix. If the largest
+element of the error matrix, emax, is less than a threshold (= O.1 Eh),
+initiate the DIIS procedure. If the emax is less than another threshold (= 1.0e-9)the SCF
+procedure has converged.
+-}
 
 
 module Science.QuantumChemistry.HartreeFock.DIIS (
@@ -40,17 +50,6 @@ import Science.QuantumChemistry.NumericalTools.LinearAlgebra
 
 data DataDIIS = DataDIIS (Seq ErrorMatrix) (Seq FlattenFock) Int deriving Show
 
--- ====================> <===================
--- | DIIS ALGORITHM
--- (1) Construct the error vector according to eq.
--- --  and transform it to orthogonal basis. Note that
--- the density matrix in eq. (4) is the density used to
--- construct the Fock matrix. If the largest element
--- of the error matrix, emax, is less than a threshold
--- (= O.1 Eh), initiate the DIIS procedure. If the emax
--- is less than another threshold (= 1.0e-9)the SCF
--- procedure has converged.
-
 
 
 diisDriver :: Monad m => ErrorMatrix -> FlattenFock -> DataDIIS -> Step -> Switch -> m (FlattenFock,DataDIIS,Switch)
@@ -66,8 +65,8 @@ diisDriver e f dat step switch =
               return (newF,newDIIS,ON)
 
 
-{- if the GaussElimination becomes ill-conditioned, omit the
-first, second, etc., equation until its condition becomes acceptable.-}
+{-| if the GaussElimination becomes ill-conditioned, omit the
+first, second, etc., equation until its condition becomes acceptable. -}
 diis :: Monad m => ErrorMatrix -> FlattenFock -> DataDIIS -> m (FlattenFock,DataDIIS)
 diis !e !f dat@(DataDIIS es fs n) = do
   let dim1 = S.length $ (f <| fs)
@@ -114,10 +113,9 @@ updateDIIS dat@(DataDIIS es fs mx) e f =
  if (S.length (e <| es)) < mx then DataDIIS (e <| es) (f <| fs) mx
                               else DataDIIS (initS $ e <| es) ( initS $ f <| fs) mx
 
--- | The Error Matrix is calculated as the matrix FDS -SDF
---   where F, D and S are the Fock, Charge Density and Overlap matrices respectively.
---   the error Vector is the trace of the multiplication of the error matrix for itself
-
+{- | The Error Matrix is calculated as the matrix FDS -SDF
+where F, D and S are the Fock, Charge Density and Overlap matrices respectively.
+the error Vector is the trace of the multiplication of the error matrix for itself -}
 calcErrorMtx :: Monad m =>
                    FlattenFock ->
                    FlattenOverlap ->

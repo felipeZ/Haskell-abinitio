@@ -1,4 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
+{-|
+Module: Science.QuantumChemistry.NumericalTools.JacobiMethod
+Description: Perform a Gauss Elimination
+Copyright: @2016 Felipe Zapata
+-}
 
 module Science.QuantumChemistry.NumericalTools.JacobiMethod (
                jacobiP,
@@ -13,21 +18,20 @@ import Data.Array.Repa.Unsafe  as R
 import qualified Data.Vector.Unboxed as U
 --import Data.Vector.Algorithms.
 
--- ----------------------> Internal Modules <---------------
-
+-- ====================> Internal Modules <=======================
 import Science.QuantumChemistry.GlobalTypes (Matrix,VecUnbox)
 import Science.QuantumChemistry.NumericalTools.LinearAlgebra (diagonal)
 import Science.QuantumChemistry.NumericalTools.VectorTools (sortEigenData)
 
 -- ============================> Types <=====================
-
 type Step      = Int
 type Tolerance = Double
 
 data Parameters = Parameters !Double !Double !Double deriving Show
 
 -- ============================> <======================
-   
+
+-- | Jacobi Algorithm to compute all the eigenvalues of a symmetry matrix
 jacobiP :: Monad m => Matrix -> m (VecUnbox,Matrix)
 jacobiP !arr = liftM (second (R.fromUnboxed sh) . sortEigenData .
                              second toUnboxed) $

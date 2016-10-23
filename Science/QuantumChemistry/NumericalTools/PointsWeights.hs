@@ -1,3 +1,9 @@
+{-|
+Module: Science.QuantumChemistry.NumericalTools.PointsWeights
+Description: Point Weights to calculate the electronic integrals.
+Copyright: @2013 Angel Alvarez, Felipe Zapata
+           @2016 Felipe Zapata
+-}
 
 module Science.QuantumChemistry.NumericalTools.PointsWeights where
 

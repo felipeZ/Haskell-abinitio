@@ -1,6 +1,11 @@
+{-|
+Module: Science.QuantumChemistry.ParsecTools.ParseUtils 
+Description: Attoparsec utilities.
+Copyright: @2016 Felipe Zapata
+-}
 
 
-module  Science.QuantumChemistry.ParsecTools.ParseUtils where
+module Science.QuantumChemistry.ParsecTools.ParseUtils where
 
 -- ====================> Standard Modules and third party <==============================
 import Control.Applicative
@@ -25,17 +30,22 @@ parseFromFile p file = do
 
 -- | Skip the content till the pattern is found
 skipTill :: B.ByteString -> Parser ()
-skipTill pattern = skipWhile (/= head (B.unpack pattern)) *> ( (string pattern *> pure () )  <|> (anyChar *> skipTill pattern))
+skipTill pattern = skipWhile (/= head (B.unpack pattern)) *>
+  ( (string pattern *> pure () )  <|> (anyChar *> skipTill pattern))
 
+-- | Return line content
 anyLine :: Parser B.ByteString
 anyLine = takeTill (== '\n')
- 
+
+-- | Discard content until end of line
 anyLine' :: Parser ()
 anyLine' = skipWhile (/= '\n') *> endOfLine 
 
+-- | Parse an integer number preceded by one or more spaces
 spaceDecimal :: Parser Int
 spaceDecimal = spaces *> decimal
 
+-- | Parse a real number preceded by one or more spaces
 spaceDouble :: Parser Double
 spaceDouble = spaces *> double
 

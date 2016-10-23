@@ -62,7 +62,7 @@ type NucCoord = [Double]
 -- | Nuclei-Nuclei Energy repulsion
 type NuclearRepulsion = Double
 
- --  | Occupation number
+-- | Occupation number
 type OccupiedShells   = Int
 
 

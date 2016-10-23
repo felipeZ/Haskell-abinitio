@@ -1,3 +1,8 @@
+{-|
+Module: Science.QuantumChemistry.BasisSet.SerializeBasis
+Description: Store plain-text basis into binary format
+Copyright: @2016 Felipe Zapata
+-}
 
 
 module Science.QuantumChemistry.BasisSet.SerializeBasis where
@@ -15,8 +20,8 @@ import Science.QuantumChemistry.ParsecTools.ParserBasis (parseBasisFile)
 
 -- =======================> <==============================
 
--- | Parse the basis set coefficients and exponents, storing them as a ADT
--- | that is subsequently serialize and store in disk as Bytestring
+{- | Parse the basis set coefficients and exponents, storing them as a ADT
+that is subsequently serialize and store in disk as Bytestring -}
 serializeBasisFile :: FilePath -> IO ()
 serializeBasisFile path = do 
    names <- getDirectoryContents path

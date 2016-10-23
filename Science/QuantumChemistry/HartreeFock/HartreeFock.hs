@@ -4,7 +4,9 @@
 {-|
 Module: Science.QuantumChemistry.HartreeFock.HartreeFock
 Description: Restricted Hartree-Fock Method
-Copyright: @2016 Felipe Zapata
+Copyright: @2012,2013 Angel Alvarez Adhesive tape
+           @2012,2015 Felipe Zapata core SCF machinery 
+           @2016 Felipe Zapata
 
 The HaskellFock SCF Project 
 The initial starting point for most method is the Hartree-Fock approximation,
@@ -62,11 +64,7 @@ import Science.QuantumChemistry.NumericalTools.LinearAlgebra
 import Science.QuantumChemistry.NumericalTools.TableBoys   (Boys,generateGridBoys)
 
 
-
--- ===============> MODULE HARTREE-FOCK <========================================
-
-                  
--- =====================================> SCF PROCEDURE <================================================
+-- =====================================> SCF PROCEDURE <=========================================
 
 -- | Initialize the required parameters to run the Hartree-Fock procedure
 scfHF ::  [AtomData] -> Charge -> (String -> IO ()) -> IO HFData
@@ -210,8 +208,8 @@ calcDensity !arr occupied =
 {-# INLINE calcDensity #-}
                   
 -- ==================================> CALCULATED THE FOCK MATRIX <======================================          
-{-| Calculate the current fock matrix as a flatten matrix summing the core Hamiltonian plus the electronic
- interaction integrals-}
+{-| Calculate the current fock matrix as a flatten matrix summing the core Hamiltonian plus
+the electronic interaction integrals-}
 fock :: Monad m
         => [AtomData]
         -> FlattenCore

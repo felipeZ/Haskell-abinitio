@@ -1,4 +1,11 @@
 
+{-|
+Module: Science.QuantumChemistry.NumericalTools.EigenValues
+Description: Compute all the eigenvalues of the real symmetrical matrix
+Copyright: @2016 Felipe Zapata
+-}
+
+
 module Science.QuantumChemistry.NumericalTools.EigenValues (
                    eigenSolve
                    ) where
@@ -17,16 +24,13 @@ import Science.QuantumChemistry.GlobalTypes (VecUnbox)
 import Science.QuantumChemistry.NumericalTools.JacobiMethod (jacobiP)
 import Science.QuantumChemistry.NumericalTools.VectorTools (sortEigenData)
 
--- -------------------> <-----------------
 
+-- | Compute all the eigenvalues and eigenvectors of symmetrical matrix.
 eigenSolve :: Array U DIM2 Double -> (VecUnbox, Array U DIM2 Double)
 eigenSolve arr = (vs, fromUnboxed (extent arr) mtx )
   where (vs,mtx) = sortEigenData $ hv2VecUnbox *** hm2VecUnbox $ eigSH' $ repa2HM arr 
 
 
-
-
--- ---------------------> <------------------------------
 vecUnbox2HV :: VecUnbox -> ND.Vector Double 
 vecUnbox2HV = convert 
 

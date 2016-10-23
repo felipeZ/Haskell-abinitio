@@ -1,3 +1,9 @@
+{-|
+Module: Science.QuantumChemistry.NumericalTools.VectorTools
+Description: Vector utilities
+Copyright: @2016 Felipe Zapata
+-}
+
 
 module Science.QuantumChemistry.NumericalTools.VectorTools (
                                       diagonalVec
@@ -14,10 +20,9 @@ import Data.Vector.Unboxed as U
 import Data.Vector.Generic.Mutable (new,unsafeWrite)
 
 
--- -----------------------------> Internal Modules <----------------
+-- =================> Internal Modules <======================
 import Science.QuantumChemistry.GlobalTypes (VecUnbox)
 
--- --------------------------> <-----------------------------
 
 sortEigenData :: (VecUnbox,VecUnbox) -> (VecUnbox,VecUnbox)
 sortEigenData (vals,vss) = runST $   

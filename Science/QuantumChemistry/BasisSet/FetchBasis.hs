@@ -1,5 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
 
+{-|
+Module: Science.QuantumChemistry.BasisSet.FetchBasis
+Description: Configure the basis set for the simulation
+Copyright: @2016 Felipe Zapata
+-}
+
 module Science.QuantumChemistry.BasisSet.FetchBasis where
 
 -- ==================> Standard and third party libraries <=================
@@ -21,9 +27,9 @@ import Science.QuantumChemistry.ParsecTools.ParserBasis
 import Science.QuantumChemistry.BasisSet.NormalizeBasis (normGlobal)
 -- ==========================<>=============================
 
--- | For a given basis, creates a map with Atom symbols as
--- | keywords and a contracted Gaussian
--- | functions as values. 
+{-| For a given basis, creates a map with Atom symbols as
+keywords and a contracted Gaussian
+functions as values.-}
 createBasisMap :: [String] -> String -> IO (M.Map String [CGF])
 createBasisMap xs basis =   do
   allElems  <- fetchBasis basis
@@ -39,8 +45,8 @@ createBasisMap xs basis =   do
 createElemMap ::[ Element] -> M.Map String Element
 createElemMap = foldr (\e@(Atom label _) acc -> M.insert (B.unpack label) e acc) M.empty
 
--- | Using The Coefficients and Exponents create a basis Set, represented as a list
--- | of contracted Gauss functions
+{-| Using The Coefficients and Exponents create a basis Set, represented as a list
+of contracted Gauss functions -}
 createCGF :: [GaussShape] -> [CGF]
 createCGF = concatMap fun 
   where  cgf xs s = [normGlobal (CGF xs s)]
@@ -66,6 +72,8 @@ fetchBasis basis = do
           Left msg -> printOnExit msg 
           Right rs -> return rs
 
+
+-- | Default path where the basis sets are stored
 defaultPathBasis :: IO FilePath
 defaultPathBasis = do
   hsFockPath <- getEnv "HSFOCK"
@@ -74,9 +82,9 @@ defaultPathBasis = do
   return (hsFockPath </> "data/basis")
 
      
--- | Because Symbols like '+*' are not allowed as part of names, the basis set containing
--- | these symbols are stored in files where `+` is replace by `m` and `*` by `s`.
--- | For example the basis 6-31+G** is stored in the file `6-31mGss.basis`
+{-| Because Symbols like '+*' are not allowed as part of names, the basis set containing
+these symbols are stored in files where `+` is replace by `m` and `*` by `s`.
+For example the basis 6-31+G** is stored in the file `6-31mGss.basis`-}
 translateBasisname :: String -> String
 translateBasisname = (++ ".basis") . fmap (replace . toLower)
  where rs        = [('+','m'),('*','s')]

@@ -1,11 +1,14 @@
 
--- The HaskellFock SCF Project
--- @2013-2015 Felipe Zapata, Angel Alvarez, Alessio Valentini
+ {-|
+Module: Science.QuantumChemistry.ConcurrencyTools.Logger where
+Description: Restricted Hartree-Fock Method
+Copyright: @2012,2013 Angel Alvarez Adhesive tape
+           @2012,2015 Felipe Zapata core SCF machinery 
+           @2016 Felipe Zapata
 
--- | Function to log events Taking as model the logger Implementation of 
--- Simon Marlow in "Parallel and Concurrent Programming
--- in Haskell
-
+Function to log events Taking as model the logger Implementation of 
+Simon Marlow in "Parallel and Concurrent Programming in Haskell.
+-}
 module Science.QuantumChemistry.ConcurrencyTools.Logger where
 
 import Control.Concurrent

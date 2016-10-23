@@ -1,5 +1,14 @@
 {-# Language BangPatterns,FlexibleContexts,TypeFamilies #-}
 
+{-|
+Module: Science.QuantumChemistry.NumericalTools.GaussElimination 
+Description: Perform a Gauss Elimination
+Copyright: @2013-2015 Angel Alvarez, Felipe Zapata
+           @2016 Felipe Zapata
+
+It works in a top step ways, first an elimination on the linear independent
+coefficients follows by a substitution step.
+-}
 module Science.QuantumChemistry.NumericalTools.GaussElimination {-(
 --                          gaussElem
                         )-}  where
@@ -10,7 +19,7 @@ import Data.Array.Repa.Unsafe  as R
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
---  --------------> Internal Modules <---------
+-- ====================> Internal Modules <=======================
 import qualified Science.QuantumChemistry.NumericalTools.LinearAlgebra as LA
 
     
@@ -28,6 +37,8 @@ data GaussElem = GaussElem { getCoeff :: !Coefficients
                             
 -- ===========================> GAUSS ELIMINATION <====================
 
+{- | Carry out a Gauss elimination using a matrix of coefficients and a Vector
+of constants -}
 gaussElem :: Monad m => Coefficients -> Constants -> m (Maybe (Array U DIM1 Double))
 gaussElem mtx vec = eliminationPhase mtx vec (Z:.0:.0) >>= \gauss ->
                     case gauss of

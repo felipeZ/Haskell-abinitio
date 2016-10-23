@@ -1,9 +1,12 @@
 
+{-|
+Module: Science.QuantumChemistry.HsFock.Project where
+Description: Data types for the project
+Copyright: @2012,2013 Angel Alvarez Adhesive tape
+           @2012,2013 Felipe Zapata core SCF machinery 
+           @2016 Felipe Zapata
+-}
 
--- The thing...
--- A system shell for the HaskellFock SCF Project 
--- @2012,2013 Angel Alvarez Adhesive tape
--- @2012,2013 Felipe Zapata core SCF machinery 
 
 module Science.QuantumChemistry.HsFock.Project where
 
