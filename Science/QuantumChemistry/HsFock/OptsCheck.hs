@@ -26,7 +26,7 @@ checkOpts opts@HSFOCK{..}= do
   unless  scf       $ printExit "We only Serve HartreeFock SCF (for the moment)"
   when (null basis) $ printExit "You must provide a basis set, like: sto-3g, etc."
   existBasis        <- doesBasisExists basis
-  when (not existBasis) $ printExit "Unknown basis set"
+  unless existBasis $ printExit "Unknown basis set"
   when (charge < 0) $ printExit "Charge must be a natural number"
   when (multi <= 0) $ printExit "Multiplicity must be 1 (singlet), 2(doblet), etc."
   --todo check that basis set exist
@@ -50,4 +50,4 @@ doesBasisExists bs = listBasis >>= \xs -> return (basis `elem` xs)
 listBasis :: IO [String]
 listBasis = do
   xs <- listDirectory "data/basis"
-  return (fmap (fst . break (== '.')) xs)
+  return (fmap (takeWhile (/= '.')) xs)

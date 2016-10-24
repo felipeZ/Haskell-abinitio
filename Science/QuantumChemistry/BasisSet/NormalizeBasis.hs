@@ -56,7 +56,7 @@ normCoeff b1    = zipWith fun cs es
         ang x   = prod / (4*x)^ sum indexes
         prod    = product $ fmap (\k -> facOdd (2*k -1)) indexes
         shell   = getfunTyp  b1
-        indexes = fmap (LA.map2val mapLAngular) $ zip (repeat shell) [0 .. 2]
+        indexes = LA.map2val mapLAngular <$> zip (repeat shell) [0 .. 2]
 
 
 -- normCoeff :: CGF -> CGF

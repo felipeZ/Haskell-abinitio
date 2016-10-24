@@ -26,7 +26,7 @@ serializeBasisFile :: FilePath -> IO ()
 serializeBasisFile path = do 
    names <- getDirectoryContents path
    let properNames = map (path </>) . filter (`notElem` [".", ".."]) $ names
-       basisName   = map ((++ ".basis") . takeWhile (not . (== '.')) ) properNames
+       basisName   = map ((++ ".basis") . takeWhile (/= '.')) properNames
    print properNames
    basis <- mapConcurrently ( parseBasisFile >=> (return . encode )) properNames 
    zipWithM_ B.writeFile basisName basis 

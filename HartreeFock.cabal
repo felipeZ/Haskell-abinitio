@@ -180,11 +180,35 @@ executable hsFock
 Test-Suite abinitio_test
   Type:                 exitcode-stdio-1.0
   Default-Language:     Haskell2010
-  Hs-Source-Dirs:       test
   Ghc-Options:           -threaded -Wall
-  Main-Is:              AbinitioTests.hs
-  Build-Depends:        base
-                      
+  Main-Is:              test/AbinitioTests.hs
+  Build-Depends:
+      async 
+    , attoparsec
+    , base >= 4.7 && < 5
+    , bytestring
+    , Cabal
+    , cereal               
+    , cmdargs
+    , containers
+    , deepseq
+    , directory
+    , either
+    , erf
+    , filepath
+    , gamma
+    , hmatrix
+    , mtl
+    , monad-memo
+    , parallel
+    , parsec
+    , primitive
+    , process
+    , repa
+    , repa-algorithms
+    , split
+    , vector
+    , vector-algorithms
 
 source-repository head
   type:     git

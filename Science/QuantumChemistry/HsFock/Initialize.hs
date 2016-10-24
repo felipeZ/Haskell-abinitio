@@ -29,7 +29,7 @@ import Science.QuantumChemistry.Units (angstrom2AU)
 -- | Using the provided basis set and the molecular coordinates initialize the atom Data type
 initializeAtoms :: HSFOCK -> (String -> IO () ) -> IO [AtomData]
 initializeAtoms HSFOCK{..} logger =
- do  atomsXYZ        <- (fmap (second (fmap angstrom2AU))) <$> parseFileXYZ xyz logger
+ do  atomsXYZ        <- fmap (second (fmap angstrom2AU)) <$> parseFileXYZ xyz logger
      let uniqueElems = nub $ map fst atomsXYZ
      basisSetMap <- createBasisMap uniqueElems basis
      return $ createAtomData atomsXYZ basisSetMap 
