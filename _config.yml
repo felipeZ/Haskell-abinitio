@@ -1,0 +1,8 @@
+title: Haskell-abinitio
+description: contains a package in Haskell to calculate the electronic structure properties of molecules using the Hartree-Fock method
+google_analytics: 
+show_downloads: true
+theme: jekyll-theme-hacker
+
+gems:
+  - jekyll-mentions
